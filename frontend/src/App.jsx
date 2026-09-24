@@ -6,6 +6,7 @@ import ModerationQueue from './components/ModerationQueue';
 import ItemInvestigation from './components/ItemInvestigation';
 import SourceCredibility from './components/SourceCredibility';
 import TabAudit from './components/TabAudit';
+import TabMultimodalInvestigation from './components/TabMultimodalInvestigation';
 import { fetchQueue } from './services/api';
 
 export default function App() {
@@ -111,6 +112,14 @@ export default function App() {
                 activeUser={activeUser}
                 onActionComplete={handleActionComplete}
                 onBackToQueue={() => setActiveTab('queue')}
+              />
+            )}
+
+            {/* Screen 3b: Real-World Multimodal Forensics Lab (Audio/Image/Video/Chain/News) */}
+            {activeTab === 'multimodal' && (
+              <TabMultimodalInvestigation
+                onSelectClaim={handleSelectClaim}
+                onNavigateToQueue={() => setActiveTab('queue')}
               />
             )}
 

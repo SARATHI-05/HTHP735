@@ -10,6 +10,7 @@ export default function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'queue', label: 'Moderation Queue', icon: 'queue' },
     { id: 'investigation', label: 'Investigation', icon: 'manage_search' },
+    { id: 'multimodal', label: 'Multimodal Lab', icon: 'biotech' },
     { id: 'sources', label: 'Source Credibility', icon: 'verified' },
     { id: 'settings', label: 'Settings', icon: 'settings' },
   ];
