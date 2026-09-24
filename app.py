@@ -97,6 +97,22 @@ st.markdown(
         font-weight: 600;
         font-size: 0.8rem;
     }
+    .badge-critical {
+        background-color: #ef4444;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    .badge-high {
+        background-color: #f97316;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -104,7 +120,7 @@ st.markdown(
 
 
 @st.cache_data
-def load_app_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict]:
+def load_app_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict, pd.DataFrame, pd.DataFrame]:
     """Loads all precomputed parquet tables and serialized model artifacts."""
     processed_dir = Path("data/processed")
     models_dir = Path("models")
@@ -113,17 +129,39 @@ def load_app_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict]:
     simulated_queues_df = pd.read_parquet(processed_dir / "simulated_queues.parquet")
     baseline_comp_df = pd.read_parquet(processed_dir / "baseline_comparison.parquet")
 
+    source_trends_df = pd.DataFrame()
+    if (processed_dir / "source_trends.parquet").exists():
+        source_trends_df = pd.read_parquet(processed_dir / "source_trends.parquet")
+
+    source_alerts_df = pd.DataFrame()
+    if (processed_dir / "source_alerts.parquet").exists():
+        source_alerts_df = pd.read_parquet(processed_dir / "source_alerts.parquet")
+
     model_bundle = {}
     model_path = models_dir / "model.joblib"
     if model_path.exists():
         model_bundle = joblib.load(model_path)
 
-    return explanations_df, simulated_queues_df, baseline_comp_df, model_bundle
+    return (
+        explanations_df,
+        simulated_queues_df,
+        baseline_comp_df,
+        model_bundle,
+        source_trends_df,
+        source_alerts_df,
+    )
 
 
 # Load datasets
 try:
-    explanations_df, simulated_queues_df, baseline_comp_df, model_bundle = load_app_data()
+    (
+        explanations_df,
+        simulated_queues_df,
+        baseline_comp_df,
+        model_bundle,
+        source_trends_df,
+        source_alerts_df,
+    ) = load_app_data()
 except Exception as e:
     st.error(f"Error loading precomputed pipeline data: {e}")
     st.stop()
@@ -558,30 +596,246 @@ with tab3:
             )
 
 # -----------------------------------------------------------------------------
-# TAB 4: SOURCE TRENDS (PLACEHOLDER FOR PHASE 8)
+# TAB 4: SOURCE TRENDS (PHASE 8)
 # -----------------------------------------------------------------------------
 with tab4:
-    st.subheader("📈 Source Credibility Tracking & Historical Volatility")
-    st.info(
-        "ℹ️ **Phase 8 Preview:** Source-credibility rolling 7-day trendlines, exponential weighting, "
-        "and rapid-drop alerts will be integrated in Phase 8. Below is the historical speaker baseline from the dataset."
+    st.subheader("📈 Source Credibility Trends & Rapid Degradation Alerts")
+    st.markdown(
+        "Dynamic tracking of **rolling 7-day exponentially weighted moving average (EWMA)** misinformation rates "
+        "across the 30-day operational timeline. Identifies sudden source credibility collapses and volatility spikes "
+        "to proactively guide queue surveillance."
     )
 
-    # Top speakers preview
-    top_speakers = explanations_df["speaker"].value_counts().head(12).reset_index()
-    top_speakers.columns = ["Speaker", "Claim Count"]
+    if source_trends_df.empty or source_alerts_df.empty:
+        st.warning("⚠️ Source trends data not found. Please run `python -m src.trends` to precompute trendlines.")
+    else:
+        # Metric Overview Cards
+        t_col1, t_col2, t_col3, t_col4 = st.columns(4)
+        total_tracked = len(source_trends_df["speaker"].unique())
+        total_alerts = len(source_alerts_df)
+        max_spike_row = source_alerts_df.loc[source_alerts_df["spike_delta"].idxmax()]
+        peak_risk_row = source_trends_df.loc[source_trends_df["rolling_risk_ewma"].idxmax()]
 
-    fig_speakers = px.bar(
-        top_speakers,
-        x="Claim Count",
-        y="Speaker",
-        orientation="h",
-        title="Top Frequent Speakers in Evaluation Split",
-        color="Claim Count",
-        color_continuous_scale="Blues",
-    )
-    fig_speakers.update_layout(template="plotly_dark", height=400)
-    st.plotly_chart(fig_speakers, use_container_width=True)
+        with t_col1:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value">{total_tracked}</div>
+                    <div class="metric-label">Tracked High-Volume Sources</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with t_col2:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: #ef4444;">{total_alerts}</div>
+                    <div class="metric-label">Detected Volatility Alerts</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with t_col3:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: #f97316;">+{max_spike_row['spike_delta']:.1%}</div>
+                    <div class="metric-label">Max 5-Day Spike ({max_spike_row['speaker']})</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with t_col4:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: #38bdf8;">{peak_risk_row['rolling_risk_ewma']:.1%}</div>
+                    <div class="metric-label">Peak Rolling Risk ({peak_risk_row['speaker']})</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Plotly Line Chart Controls
+        all_speakers = sorted(source_trends_df["speaker"].unique().tolist())
+        default_speakers = [s for s in ["donald-trump", "barack-obama", "chain-email", "hillary-clinton", "mitt-romney"] if s in all_speakers]
+        if not default_speakers:
+            default_speakers = all_speakers[:5]
+
+        ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3, 1, 1])
+        with ctrl_col1:
+            selected_speakers = st.multiselect(
+                "Select Sources to Compare:",
+                options=all_speakers,
+                default=default_speakers,
+                help="Select one or more top-volume sources to visualize rolling credibility trajectories.",
+            )
+        with ctrl_col2:
+            show_bands = st.checkbox("Show Risk Thresholds", value=True, help="Display 60% Elevated and 80% Critical lines.")
+        with ctrl_col3:
+            show_alert_pins = st.checkbox("Highlight Alert Pins", value=True, help="Show red scatter pins on days with detected alerts.")
+
+        if selected_speakers:
+            plot_df = source_trends_df[source_trends_df["speaker"].isin(selected_speakers)].copy()
+
+            fig_trend = px.line(
+                plot_df,
+                x="day",
+                y="rolling_risk_ewma",
+                color="speaker",
+                markers=True,
+                labels={"day": "Operational Timeline (Day 1 - 30)", "rolling_risk_ewma": "7-Day EWMA Misleading Rate", "speaker": "Source"},
+                title="7-Day Rolling Misleading Rate by Source Over Operational Window",
+            )
+
+            # Add reference bands
+            if show_bands:
+                fig_trend.add_hline(
+                    y=0.80,
+                    line_dash="dash",
+                    line_color="#ef4444",
+                    annotation_text="Critical Misleading (80%)",
+                    annotation_position="bottom right",
+                    annotation_font_color="#ef4444",
+                )
+                fig_trend.add_hline(
+                    y=0.60,
+                    line_dash="dot",
+                    line_color="#eab308",
+                    annotation_text="Elevated Risk (60%)",
+                    annotation_position="bottom right",
+                    annotation_font_color="#eab308",
+                )
+
+            # Highlight alerts on the chart
+            if show_alert_pins:
+                alert_pts = plot_df[plot_df["is_alert"]].copy()
+                if not alert_pts.empty:
+                    fig_trend.add_scatter(
+                        x=alert_pts["day"],
+                        y=alert_pts["rolling_risk_ewma"],
+                        mode="markers",
+                        marker=dict(size=12, color="#ef4444", symbol="star", line=dict(width=2, color="white")),
+                        name="🚨 Degradation Alert",
+                        hoverinfo="text",
+                        hovertext=[
+                            f"🚨 ALERT: {r['speaker']} (Day {r['day']})<br>7-Day EWMA: {r['rolling_risk_ewma']:.1%}<br>5-Day Spike: {r['ewma_delta_5d']:+.1%}"
+                            for _, r in alert_pts.iterrows()
+                        ],
+                    )
+
+            fig_trend.update_layout(
+                template="plotly_dark",
+                height=450,
+                yaxis=dict(tickformat=".0%", range=[0, 1.05]),
+                xaxis=dict(tickmode="linear", dtick=2),
+                margin=dict(l=20, r=20, t=50, b=20),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+        else:
+            st.info("Select at least one source above to plot credibility trends.")
+
+        # Alert Table Section
+        st.markdown("---")
+        st.markdown("#### 🚨 Rapid Credibility Degradation Alerts")
+        st.markdown(
+            "Alerts triggered when a source experiences a sharp jump in misleading rate ($\ge +20\%$ over 5 days with risk $\ge 65\%$) "
+            "or maintains an extreme misinformation rate ($\ge 85\%$) while actively generating claims."
+        )
+
+        sev_col, sp_col = st.columns([1, 2])
+        with sev_col:
+            sev_filter = st.selectbox("Filter Severity:", ["All Severities", "CRITICAL", "HIGH"])
+        with sp_col:
+            source_filter = st.selectbox("Filter by Source:", ["All Sources"] + all_speakers)
+
+        filtered_alerts = source_alerts_df.copy()
+        if sev_filter != "All Severities":
+            filtered_alerts = filtered_alerts[filtered_alerts["severity"] == sev_filter]
+        if source_filter != "All Sources":
+            filtered_alerts = filtered_alerts[filtered_alerts["speaker"] == source_filter]
+
+        if not filtered_alerts.empty:
+            display_alerts = filtered_alerts.copy()
+            display_alerts["current_rolling_risk"] = display_alerts["current_rolling_risk"].map(lambda x: f"{x:.1%}")
+            display_alerts["baseline_rate"] = display_alerts["baseline_rate"].map(lambda x: f"{x:.1%}")
+            display_alerts["spike_delta"] = display_alerts["spike_delta"].map(lambda x: f"{x:+.1%}")
+
+            display_table = display_alerts[
+                ["speaker", "day", "severity", "current_rolling_risk", "baseline_rate", "spike_delta", "alert_reason", "sample_claim"]
+            ].rename(
+                columns={
+                    "speaker": "Source",
+                    "day": "Day",
+                    "severity": "Severity",
+                    "current_rolling_risk": "7-Day Risk",
+                    "baseline_rate": "Historical Baseline",
+                    "spike_delta": "5-Day Delta",
+                    "alert_reason": "Trigger Reason",
+                    "sample_claim": "Recent Claim Sample",
+                }
+            )
+            st.dataframe(display_table, use_container_width=True, hide_index=True)
+        else:
+            st.success("No alerts match the selected filters.")
+
+        # Source Deep Dive
+        st.markdown("---")
+        st.markdown("#### 🔍 Single Source Profile & Recommended Policy")
+        drill_col1, drill_col2 = st.columns([1, 2])
+
+        with drill_col1:
+            drill_speaker = st.selectbox("Inspect Source Profile:", all_speakers, index=0)
+            sp_trends = source_trends_df[source_trends_df["speaker"] == drill_speaker]
+            sp_alerts = source_alerts_df[source_alerts_df["speaker"] == drill_speaker]
+            latest_risk = sp_trends.iloc[-1]["rolling_risk_ewma"]
+            base_risk = sp_trends.iloc[0]["raw_risk"] if pd.notna(sp_trends.iloc[0]["raw_risk"]) else 0.5
+            has_critical = any(sp_alerts["severity"] == "CRITICAL")
+            has_high = len(sp_alerts) > 0
+
+            if has_critical:
+                policy_badge = '<span class="badge-critical">🚨 CRITICAL SURVEILLANCE</span>'
+                rec_policy = "**Action Policy:** Immediate routing of all claims from this speaker to senior fact-checkers; apply +0.20 priority boost."
+            elif has_high or latest_risk >= 0.65:
+                policy_badge = '<span class="badge-high">⚠️ ELEVATED MONITORING</span>'
+                rec_policy = "**Action Policy:** Heightened priority; auto-flag claims discussing critical harm topics (health, elections, crime)."
+            else:
+                policy_badge = '<span class="badge-review">✅ STANDARD QUEUE</span>'
+                rec_policy = "**Action Policy:** Routine algorithmic triage; rank strictly by Reach &times; Risk formula."
+
+            st.markdown(f"**Current Status:** {policy_badge}", unsafe_allow_html=True)
+            st.markdown(f"**30-Day Claims Count:** `{int(sp_trends['daily_claims'].sum())}` claims")
+            st.markdown(f"**Historical Baseline Rate:** `{sp_trends.iloc[0]['raw_risk']:.1%}`" if pd.notna(sp_trends.iloc[0]['raw_risk']) else "**Historical Baseline Rate:** `N/A`")
+            st.markdown(f"**Current 7-Day Rolling Risk:** `{latest_risk:.1%}`")
+            st.markdown(f"**Total Triggered Alerts:** `{len(sp_alerts)}`")
+
+        with drill_col2:
+            st.markdown(f"##### Operational Recommendation for `{drill_speaker}`")
+            st.markdown(rec_policy)
+            st.markdown(
+                """
+                > **Operational Rationale:** When a high-volume political figure or publication undergoes sudden credibility degradation, 
+                > waitlisted claims risk becoming viral misperceptions before routine review cycles. The surveillance tier temporarily 
+                > adjusts the intake priority without manual operator reconfiguration.
+                """
+            )
+            # Mini bar chart of daily claim volume
+            fig_vol = px.bar(
+                sp_trends,
+                x="day",
+                y="daily_claims",
+                title=f"Daily Claim Intake Volume for {drill_speaker}",
+                labels={"day": "Day", "daily_claims": "Claims Count"},
+                color="status",
+                color_discrete_map={"CRITICAL ALERT": "#ef4444", "ELEVATED": "#f97316", "STABLE": "#3b82f6"},
+            )
+            fig_vol.update_layout(template="plotly_dark", height=240, margin=dict(l=10, r=10, t=35, b=10))
+            st.plotly_chart(fig_vol, use_container_width=True)
+
 
 # -----------------------------------------------------------------------------
 # TAB 5: METHOD AND LIMITS
