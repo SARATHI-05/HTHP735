@@ -31,3 +31,8 @@ htmlcov/
 # Temporary scratch & documentation drafts
 scratch/
 *.tmp
+
+# Node modules
+node_modules/
+frontend/node_modules/
+

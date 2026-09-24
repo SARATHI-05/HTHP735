@@ -10,6 +10,7 @@ from backend.app.routers import (
     overview_router,
     queue_router,
     sources_router,
+    investigation_router,
 )
 
 app = FastAPI(
@@ -68,12 +69,21 @@ def readiness():
         content={"status": "DEGRADED", "models_loaded": models_ready, "data_loaded": processed_ready},
     )
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
 # Register versioned API routers
 app.include_router(overview_router, prefix=settings.API_V1_STR)
 app.include_router(claims_router, prefix=settings.API_V1_STR)
 app.include_router(queue_router, prefix=settings.API_V1_STR)
 app.include_router(sources_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
+app.include_router(investigation_router)
+
+# Mount frontend production build if available (single container deployment)
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn

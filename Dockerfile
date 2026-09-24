@@ -1,5 +1,25 @@
-# Production Dockerfile for Misinformation Triage System (FastAPI + React)
-FROM python:3.10-slim as base
+# ==============================================================================
+# Multi-Stage Production Dockerfile for Misinformation Triage System
+# Stage 1: Compiles the Vite React frontend assets
+# Stage 2: Packages the FastAPI ML backend, precomputed models, and static UI
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build Frontend
+# ------------------------------------------------------------------------------
+FROM node:18-alpine AS frontend-builder
+WORKDIR /build/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# ------------------------------------------------------------------------------
+# Stage 2: Production Python Backend Runtime
+# ------------------------------------------------------------------------------
+FROM python:3.10-slim AS runner
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -26,6 +46,9 @@ RUN pip install --no-cache-dir -U pip setuptools wheel && \
 
 # Copy application source code and precomputed data/model artifacts
 COPY . /app
+
+# Copy compiled frontend assets from Stage 1
+COPY --from=frontend-builder /build/frontend/dist /app/frontend/dist
 
 # Ensure proper permissions for non-root user
 RUN chown -R appuser:appgroup /app

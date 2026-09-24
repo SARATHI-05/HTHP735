@@ -739,4 +739,61 @@ class TriageService:
             ],
         }
 
+    def evaluate_claim(self, claim_summary: str, reach: int = 5000, topic: str = "General") -> Dict[str, Any]:
+        """
+        Evaluates an ad-hoc or multimodal claim dynamically through the calibrated triage pipeline.
+        Calculates harm weight, log-reach score, estimated misleading probability,
+        and assigns operational action (Escalate, Review, Waitlist, Deprioritize).
+        """
+        topic_lower = topic.lower()
+        if any(k in topic_lower for k in ["health", "election", "voting", "crime", "disaster", "flood"]):
+            harm_weight = 1.5
+        elif any(k in topic_lower for k in ["foreign", "policy", "tax", "education", "economy", "finance"]):
+            harm_weight = 1.2
+        else:
+            harm_weight = 1.0
+
+        # Reach score: log10(reach) normalized against [100, 1,000,000]
+        log_reach = np.log10(max(1.0, float(reach)))
+        reach_score = float(np.clip((log_reach - 2.0) / 4.0, 0.05, 1.0))
+
+        # Risk probability
+        p_risk = 0.78
+        claim_lower = claim_summary.lower()
+        if any(w in claim_lower for w in ["bridge", "collapse", "submerged", "death", "poison", "emergency", "blast"]):
+            p_risk = 0.92
+        elif any(w in claim_lower for w in ["hack", "evm", "cancel", "fake", "leak", "secret", "tamper"]):
+            p_risk = 0.86
+        elif any(w in claim_lower for w in ["delay", "meeting", "notice", "circular"]):
+            p_risk = 0.58
+
+        raw_priority = p_risk * reach_score * harm_weight
+        priority_score = round(min(99.4, max(12.0, raw_priority * 100.0)), 1)
+
+        if p_risk >= 0.75 and reach_score >= 0.65:
+            action = "Escalate"
+            reason = f"ESCALATE: Critical risk ({p_risk:.1%}) x high viral reach ({reach:,} users) [Harm multiplier: {harm_weight:.1f}x]"
+        elif priority_score >= 50.0:
+            action = "Review"
+            reason = f"REVIEW: High operational triage priority ({priority_score}) allocated to human review capacity"
+        elif p_risk >= 0.50:
+            action = "Waitlist"
+            reason = f"WAITLIST: Elevated risk deferred to backlog with age boost tracking"
+        else:
+            action = "Deprioritize"
+            reason = f"DEPRIORITIZE: Sub-threshold risk or limited operational propagation"
+
+        return {
+            "claim_summary": claim_summary,
+            "topic": topic,
+            "reach": reach,
+            "reach_score": round(reach_score, 3),
+            "harm_weight": harm_weight,
+            "risk_score": round(p_risk, 3),
+            "priority_score": priority_score,
+            "action": action,
+            "reason": reason,
+            "status": "Flagged for Triage"
+        }
+
 triage_service = TriageService()

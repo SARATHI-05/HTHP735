@@ -44,4 +44,6 @@ dist/
 # Local run logs
 data/audit_log.jsonl
 *.log
+scratch/
+temp_test_assets/
 

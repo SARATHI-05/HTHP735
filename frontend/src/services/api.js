@@ -1,4 +1,5 @@
-const API_BASE = '/api/v1';
+const BACKEND_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = `${BACKEND_URL}/api/v1`;
 
 export async function fetchOverview() {
   try {
@@ -96,6 +97,31 @@ export async function fetchAuditMetrics() {
   } catch (err) {
     console.warn('API error fetching audit metrics', err);
     return getFallbackAudit();
+  }
+}
+
+export async function investigateMultimodal(formData) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/investigate/multimodal`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('API error investigating multimodal content', err);
+    return null;
+  }
+}
+
+export async function fetchInvestigationSamples() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/investigate/samples`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('API error fetching samples', err);
+    return [];
   }
 }
 

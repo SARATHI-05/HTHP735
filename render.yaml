@@ -1,0 +1,28 @@
+services:
+  # ----------------------------------------------------------------------------
+  # Evidence-Grounded Misinformation Triage System - FastAPI Backend
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: misinfo-triage-backend
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEFAULT_DAILY_CAPACITY
+        value: "20"
+      - key: DATA_PROCESSED_DIR
+        value: data/processed
+      - key: MODELS_DIR
+        value: models
+      - key: AUDIT_LOG_PATH
+        value: data/audit_log.jsonl
