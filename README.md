@@ -30,6 +30,16 @@ flowchart LR
 
 ---
 
+## Known Limitations & Disclosures
+
+1. **LIAR Historical Count Mild Leakage:** In the LIAR dataset, speaker credit history counts (`count_barely_true`, `count_false`, `count_pants_fire`, etc.) reflect aggregate PolitiFact totals at data collection time, meaning they may partly include rulings on the current statement itself. This is an inherent benchmark artifact of LIAR and is disclosed accordingly.
+2. **Synthetic Operational Metadata:** Actual viral reach and fine-grained arrival timestamps were not published with LIAR; they are synthetically modeled via context-conditioned log-normal distributions and uniform 30-day timeline windows.
+3. **Evidence Corpus Scope:** Offline consistency verification operates against validated ground-truth claims rather than real-time web-scale search.
+4. **Fairness & Bias:** No formal demographic fairness or political viewpoint bias audit has been performed on the benchmark annotations.
+
+
+---
+
 ## Project Structure
 
 ```
