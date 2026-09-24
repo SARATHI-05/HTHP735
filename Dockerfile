@@ -1,14 +1,10 @@
-# Production Multi-Stage Dockerfile for Misinformation Triage System (ML-09)
+# Production Dockerfile for Misinformation Triage System (FastAPI + React)
 FROM python:3.10-slim as base
 
-# Prevent Python from writing .pyc files and enable unbuffered output
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    STREAMLIT_SERVER_PORT=8501 \
-    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
-    STREAMLIT_SERVER_HEADLESS=true \
-    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    PORT=8000
 
 # Install minimal system dependencies & curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -36,10 +32,10 @@ RUN chown -R appuser:appgroup /app
 
 USER appuser
 
-EXPOSE 8501
+EXPOSE 8000
 
 # Container healthcheck probe
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/healthz || exit 1
 
-ENTRYPOINT ["streamlit", "run", "app.py"]
+ENTRYPOINT ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

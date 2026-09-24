@@ -35,7 +35,13 @@ ENV/
 *.tar.gz
 
 # IDE / OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# Local run logs
+data/audit_log.jsonl
+*.log
+

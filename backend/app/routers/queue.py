@@ -40,11 +40,15 @@ def submit_moderator_verdict(claim_id: str, action_req: ModeratorActionRequest):
     updates queue item status, and logs an immutable audit entry to JSONL ledger.
     """
     try:
+        reviewer = action_req.reviewer_id or action_req.moderator_id or "reviewer"
+        action_verdict = action_req.verdict or action_req.action or "REVIEWED"
+        action_notes = action_req.reviewer_notes or action_req.notes or ""
+
         res = triage_service.record_action(
             claim_id=claim_id,
-            reviewer_id=action_req.reviewer_id,
-            verdict=action_req.verdict,
-            notes=action_req.reviewer_notes,
+            reviewer_id=reviewer,
+            verdict=action_verdict,
+            notes=action_notes,
         )
         return res
     except Exception as e:

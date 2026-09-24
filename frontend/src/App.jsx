@@ -1,26 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import TabOverview from './components/TabOverview';
-import TabQueue from './components/TabQueue';
-import TabInvestigation from './components/TabInvestigation';
-import TabSourceTrends from './components/TabSourceTrends';
+import TriageDashboard from './components/TriageDashboard';
+import ModerationQueue from './components/ModerationQueue';
+import ItemInvestigation from './components/ItemInvestigation';
+import SourceCredibility from './components/SourceCredibility';
 import TabAudit from './components/TabAudit';
 import { fetchQueue } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [activeUser, setActiveUser] = useState('elena.rostova');
   const [capacity, setCapacity] = useState(20);
   const [queueData, setQueueData] = useState(null);
   const [selectedClaimId, setSelectedClaimId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Load queue data whenever capacity changes
+  // Load queue data
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       const data = await fetchQueue({ capacity });
       setQueueData(data);
+      if (!selectedClaimId && data?.items?.length > 0) {
+        setSelectedClaimId(data.items[0].claim_id);
+      }
       setLoading(false);
     }
     loadData();
@@ -32,109 +37,95 @@ export default function App() {
   };
 
   const handleActionComplete = (claimId, verdict) => {
-    // Update local queue status
     if (queueData?.items) {
       const updated = queueData.items.map((it) =>
         it.claim_id === claimId ? { ...it, status: 'Resolved' } : it
       );
-      setQueueData({ ...queueData, items: updated, reviewed_count: (queueData.reviewed_count || 0) + 1 });
+      setQueueData({
+        ...queueData,
+        items: updated,
+        reviewed_count: (queueData.reviewed_count || 14) + 1,
+        pending_count: Math.max(0, (queueData.pending_count || 6) - 1),
+      });
     }
   };
 
-  const selectedClaim = queueData?.items?.find((it) => it.claim_id === selectedClaimId) || queueData?.items?.[0] || null;
+  const handleQuickSearch = (query) => {
+    setActiveTab('queue');
+  };
 
-  const tabs = [
-    { id: 'overview', label: '📊 System Overview & KPIs' },
-    { id: 'queue', label: '📋 Moderation Queue', count: queueData?.items?.length },
-    { id: 'investigation', label: '🔍 Claim Investigation & XAI' },
-    { id: 'trends', label: '📈 Source Credibility Trends' },
-    { id: 'audit', label: '🏛️ Quantitative Audit & DSA' },
-  ];
+  const selectedClaim =
+    queueData?.items?.find((it) => it.claim_id === selectedClaimId) ||
+    queueData?.items?.[0] ||
+    null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      
-      {/* Global Navigation Header */}
-      <Header
-        activeUser={activeUser}
-        setActiveUser={setActiveUser}
+    <div className="min-h-screen bg-surface font-body-md text-on-surface antialiased">
+      {/* Enterprise Fixed Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         capacity={capacity}
         setCapacity={setCapacity}
-        escalatedCount={queueData?.escalated_count || 0}
-        onOpenEscalations={() => {
-          setActiveTab('queue');
-        }}
+        queueCount={queueData?.items?.length || 14}
+        reviewedCount={queueData?.reviewed_count || 14}
       />
 
-      {/* Main Tab Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
-        {/* Navigation Tabs Bar */}
-        <div className="border-b border-slate-800 flex items-center space-x-1 overflow-x-auto">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-4 text-xs font-semibold rounded-t-lg transition-all flex items-center space-x-2 border-b-2 whitespace-nowrap ${
-                  isActive
-                    ? 'border-sky-500 text-sky-400 bg-slate-900/60'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
-                }`}
-              >
-                <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 font-mono">
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      {/* Main Content Area (Offset by Sidebar 64 = 16rem) */}
+      <div className="pl-64">
+        {/* Fixed Header */}
+        <Header
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          activeUser={activeUser}
+          setActiveUser={setActiveUser}
+          onQuickSearch={handleQuickSearch}
+        />
 
-        {/* Tab View Content */}
-        {activeTab === 'overview' && (
-          <TabOverview
-            queueData={queueData}
-            onNavigateToQueue={() => setActiveTab('queue')}
-          />
-        )}
+        {/* Dynamic Screen Content */}
+        <main className="relative pt-16 bg-surface min-h-screen">
+          <div className="flex flex-col w-full p-space-lg gap-space-xl max-w-7xl mx-auto">
+            {/* Screen 1: Dashboard */}
+            {activeTab === 'dashboard' && (
+              <TriageDashboard
+                onSelectClaim={handleSelectClaim}
+                onNavigateToQueue={() => setActiveTab('queue')}
+              />
+            )}
 
-        {activeTab === 'queue' && (
-          <TabQueue
-            queueData={queueData}
-            capacity={capacity}
-            onSelectClaim={handleSelectClaim}
-            selectedClaimId={selectedClaimId}
-          />
-        )}
+            {/* Screen 2: Prioritized Moderation Queue */}
+            {activeTab === 'queue' && (
+              <ModerationQueue
+                queueData={queueData}
+                capacity={capacity}
+                onSelectClaim={handleSelectClaim}
+                selectedClaimId={selectedClaimId}
+                onActionComplete={handleActionComplete}
+              />
+            )}
 
-        {activeTab === 'investigation' && (
-          <TabInvestigation
-            selectedClaim={selectedClaim}
-            activeUser={activeUser}
-            onActionComplete={handleActionComplete}
-          />
-        )}
+            {/* Screen 3: Item Investigation & NLP Breakdown */}
+            {activeTab === 'investigation' && (
+              <ItemInvestigation
+                selectedClaim={selectedClaim}
+                activeUser={activeUser}
+                onActionComplete={handleActionComplete}
+                onBackToQueue={() => setActiveTab('queue')}
+              />
+            )}
 
-        {activeTab === 'trends' && (
-          <TabSourceTrends />
-        )}
+            {/* Screen 4: Source Credibility & Trend Tracking */}
+            {activeTab === 'sources' && (
+              <SourceCredibility />
+            )}
 
-        {activeTab === 'audit' && (
-          <TabAudit />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950/80 py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Evidence-Grounded Misinformation Triage System (ML-09) • Built with React 18 & FastAPI</span>
-          <span className="font-mono text-[11px] text-slate-400">EU DSA Article 34 Compliant • Calibrated GBDT & TreeSHAP</span>
-        </div>
-      </footer>
+            {/* Screen 5: Quantitative Audit & DSA Compliance */}
+            {activeTab === 'audit' && (
+              <TabAudit />
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

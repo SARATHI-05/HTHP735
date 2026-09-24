@@ -7,6 +7,7 @@ from backend.app.config import settings
 from backend.app.routers import (
     audit_router,
     claims_router,
+    overview_router,
     queue_router,
     sources_router,
 )
@@ -67,6 +68,7 @@ def readiness():
     )
 
 # Register versioned API routers
+app.include_router(overview_router, prefix=settings.API_V1_STR)
 app.include_router(claims_router, prefix=settings.API_V1_STR)
 app.include_router(queue_router, prefix=settings.API_V1_STR)
 app.include_router(sources_router, prefix=settings.API_V1_STR)

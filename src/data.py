@@ -75,6 +75,28 @@ HARM_TOPIC_KEYWORDS: Dict[str, List[str]] = {
         "inflation",
         "unemployment",
         "recession",
+        # Tamil Nadu critical topics (1.5x harm weight)
+        "jallikkattu",
+        "dmk",
+        "aiadmk",
+        "admk",
+        "neet",
+        "cauvery",
+        "kaveri",
+        "temple",
+        "kovil",
+        "communal",
+        "riot",
+        "riots",
+        "curfew",
+        "bandh",
+        "cyclone",
+        "flood",
+        "tsunami",
+        "amma",
+        "karunanidhi",
+        "jayalalithaa",
+        "dravidam",
     ],
     "sensitive": [
         "foreign-policy",
@@ -95,6 +117,23 @@ HARM_TOPIC_KEYWORDS: Dict[str, List[str]] = {
         "schools",
         "civil-rights",
         "abortion",
+        # Tamil Nadu sensitive topics (1.2x harm weight)
+        "dravidian",
+        "caste",
+        "reservation",
+        "sterlite",
+        "tuticorin",
+        "thoothukudi",
+        "tasmac",
+        "liquor",
+        "prohibition",
+        "hindi-imposition",
+        "anti-hindi",
+        "vanniyar",
+        "dalit",
+        "panchayat",
+        "sri-lankan-tamil",
+        "fishermen",
     ],
 }
 
@@ -123,6 +162,13 @@ def infer_venue_tier(context: Optional[str]) -> str:
             "internet",
             "post",
             "meme",
+            # Indian/TN social platforms
+            "whatsapp",
+            "sharechat",
+            "koo",
+            "moj",
+            "telegram",
+            "x.com",
         ]
     ):
         return "social_media"
@@ -143,6 +189,14 @@ def infer_venue_tier(context: Optional[str]) -> str:
             "address",
             "news",
             "broadcast",
+            # Tamil Nadu broadcast channels
+            "sun tv",
+            "thanthi",
+            "puthiya thalaimurai",
+            "polimer",
+            "jaya tv",
+            "news7",
+            "zee tamil",
         ]
     ):
         return "broadcast_speech"

@@ -58,18 +58,20 @@ PATTERNS = {
         re.IGNORECASE,
     ),
     "sensational": re.compile(
-        r"\b(shocking|bombshell|unbelievable|exposed|secret|conspiracy|crisis|disaster|scandal|corrupt|outrageous|mind-blowing|destroy|destructive)\b",
+        r"\b(shocking|bombshell|unbelievable|exposed|secret|conspiracy|crisis|disaster|scandal|corrupt|outrageous|mind-blowing|destroy|destructive"
+        r"|breaking|exclusive|urgent|massive|horrifying|terrifying|viral|leaked|busted|explosive)\b",
         re.IGNORECASE,
     ),
     "hedging": re.compile(
-        r"\b(maybe|perhaps|possibly|allegedly|reportedly|appears|seems|claimed|supposedly|might|could|suggests|unconfirmed)\b",
+        r"\b(maybe|perhaps|possibly|allegedly|reportedly|appears|seems|claimed|supposedly|might|could|suggests|unconfirmed"
+        r"|rumour|rumor|unverified|forwarded)\b",
         re.IGNORECASE,
     ),
     "numbers_stats": re.compile(
-        r"(\b\d+([,.]\d+)?%?\b|\$\d+([,.]\d+)?|\b(trillion|billion|million|percent|percentage)\b)",
+        r"(\b\d+([,.]\d+)?%?\b|\$\d+([,.]\d+)?|\b(trillion|billion|million|percent|percentage|crore|lakh)\b)",
         re.IGNORECASE,
     ),
-    "quotes": re.compile(r'["\'“”‘’]'),
+    "quotes": re.compile(r'["\x27\u201c\u201d\u2018\u2019]'),
 }
 
 
