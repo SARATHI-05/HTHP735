@@ -112,6 +112,11 @@ async def investigate_multimodal_content(
             reach=reach,
         )
 
+        # Autofill reach if user left at default or provided URL
+        if url_meta.get("estimated_reach") and (reach <= 5000 or reach == 65000):
+            reach = url_meta["estimated_reach"]
+            investigation_report["reach"] = reach
+
         investigation_report["forensics"]["social_url"] = {
             "modality": "social_url",
             "url": clean_url,
@@ -125,6 +130,9 @@ async def investigate_multimodal_content(
             "description": url_meta["description"],
             "image_url": url_meta["image_url"],
             "source_status": url_meta["source_status"],
+            "estimated_reach": url_meta.get("estimated_reach", reach),
+            "reach_factors": url_meta.get("reach_factors", []),
+            "reach_tier": url_meta.get("reach_tier", "Elevated Exposure"),
             "url_risk_score": heuristics["url_risk_score"],
             "is_shortener": heuristics["is_shortener"],
             "brand_impersonation": heuristics["brand_impersonation"],

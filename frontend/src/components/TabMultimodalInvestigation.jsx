@@ -8,6 +8,7 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
   const [url, setUrl] = useState('');
   const [textContent, setTextContent] = useState('');
   const [reach, setReach] = useState(65000);
+  const [reachAutofillInfo, setReachAutofillInfo] = useState(null);
   const [topic, setTopic] = useState('Elections');
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
@@ -26,6 +27,60 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
     if (lower.includes('t.me') || lower.includes('telegram')) return { name: 'Telegram', icon: 'send', color: 'bg-sky-500 text-white' };
     if (lower.startsWith('http://') || lower.startsWith('https://')) return { name: 'Web URL / News', icon: 'link', color: 'bg-slate-700 text-white' };
     return null;
+  };
+
+  // Real-world Reach Autofill Algorithm based on platform virality & referral parameters
+  const calculateEstimatedReachFromUrl = (u) => {
+    if (!u || !u.trim()) return null;
+    const lower = u.toLowerCase();
+    let base = 35000;
+    let label = 'Web Article / Blog Tier';
+
+    if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
+      base = 95000;
+      label = 'YouTube Video Engagement Tier';
+    } else if (lower.includes('t.me') || lower.includes('telegram')) {
+      base = 140000;
+      label = 'Telegram Broadcast Propagation Tier';
+    } else if (lower.includes('instagram.com')) {
+      base = 80000;
+      label = 'Instagram Visual Virality Tier';
+    } else if (lower.includes('facebook.com') || lower.includes('fb.')) {
+      base = 85000;
+      label = 'Facebook Feed Cascade Tier';
+    } else if (lower.includes('x.com') || lower.includes('twitter.com')) {
+      base = 65000;
+      label = 'X / Twitter Velocity Tier';
+    } else if (lower.includes('tiktok.com')) {
+      base = 110000;
+      label = 'TikTok Algorithm Virality Tier';
+    } else if (lower.includes('reddit.com') || lower.includes('redd.it')) {
+      base = 45000;
+      label = 'Reddit Community Tier';
+    } else if (lower.includes('thehindu') || lower.includes('timesofindia') || lower.includes('bbc') || lower.includes('ndtv')) {
+      base = 25000;
+      label = 'Verified Mainstream Media Tier';
+    }
+
+    const modifiers = [];
+    if (lower.includes('ref=') || lower.includes('utm_source=') || lower.includes('whatsapp') || lower.includes('forward')) {
+      base += 45000;
+      modifiers.push('+45k viral referral parameters');
+    }
+    if (lower.includes('bit.ly') || lower.includes('tinyurl') || lower.includes('t.co') || lower.includes('cutt.ly')) {
+      base += 30000;
+      modifiers.push('+30k obfuscated shortener');
+    }
+    if (lower.includes('.xyz') || lower.includes('.top') || lower.includes('.click') || lower.includes('.buzz')) {
+      base += 50000;
+      modifiers.push('+50k disposable domain propagation');
+    }
+    if (lower.includes('eci') || lower.includes('magalir') || lower.includes('subsidy') || lower.includes('breaking')) {
+      base += 40000;
+      modifiers.push('+40k high-urgency keyword reach boost');
+    }
+
+    return { reach: base, label, modifiers };
   };
 
   const detectedPlatform = getPlatformFromUrl(url);
@@ -109,10 +164,28 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
     }
   };
 
+  const handleUrlChange = (newUrl) => {
+    setUrl(newUrl);
+    const reachEstimate = calculateEstimatedReachFromUrl(newUrl);
+    if (reachEstimate) {
+      setReach(reachEstimate.reach);
+      setReachAutofillInfo(reachEstimate);
+    } else if (!newUrl) {
+      setReachAutofillInfo(null);
+    }
+  };
+
   const loadSample = (s) => {
     setTextContent(s.text || '');
     setUrl(s.url || '');
-    setReach(s.reach);
+    if (s.url) {
+      const reachEstimate = calculateEstimatedReachFromUrl(s.url);
+      setReach(s.reach || reachEstimate?.reach || 65000);
+      setReachAutofillInfo(reachEstimate);
+    } else {
+      setReach(s.reach || 65000);
+      setReachAutofillInfo(null);
+    }
     setTopic(s.topic);
     setFileType(s.type);
     if (s.previewUrl) {
@@ -329,7 +402,7 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
                 <input
                   type="url"
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => handleUrlChange(e.target.value)}
                   placeholder="e.g. https://x.com/user/status/... or youtube.com/watch?v=..."
                   className="w-full bg-surface-container-low text-on-surface p-space-sm pr-9 rounded-xl text-xs outline-none border border-outline-variant/40 focus:border-secondary transition-colors font-mono"
                 />
@@ -446,16 +519,40 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
             {/* Operational Parameters (Reach & Topic) */}
             <div className="grid grid-cols-2 gap-space-sm">
               <div>
-                <label className="block text-[11px] font-semibold text-outline uppercase tracking-wider mb-1">
-                  Estimated Reach
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[11px] font-semibold text-outline uppercase tracking-wider">
+                    Estimated Reach
+                  </label>
+                  {reachAutofillInfo && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-0.5">
+                      <span className="material-symbols-outlined text-[11px]">bolt</span>
+                      Autofilled from URL
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   value={reach}
-                  onChange={(e) => setReach(Number(e.target.value))}
+                  onChange={(e) => {
+                    setReach(Number(e.target.value));
+                    setReachAutofillInfo(null);
+                  }}
                   className="w-full bg-surface-container-low text-on-surface p-space-sm rounded-xl text-xs outline-none border border-outline-variant/40 font-mono font-semibold"
                   placeholder="e.g. 50000"
                 />
+                {reachAutofillInfo && (
+                  <div className="mt-1 text-[10px] text-outline flex flex-col gap-0.5 bg-surface-container-low p-1.5 rounded-lg border border-outline-variant/20">
+                    <span className="font-semibold text-on-surface flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px] text-secondary">trending_up</span>
+                      {reachAutofillInfo.label}
+                    </span>
+                    {reachAutofillInfo.modifiers.length > 0 && (
+                      <span className="text-secondary font-mono text-[9.5px]">
+                        {reachAutofillInfo.modifiers.join(' • ')}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -532,7 +629,9 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
                     <div className="text-headline-lg font-bold text-on-surface text-2xl font-mono mt-0.5">
                       {Number(report.reach || reach).toLocaleString()}
                     </div>
-                    <div className="text-[10px] text-outline mt-0.5">Organic Social Propagation</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-0.5 truncate">
+                      {report.forensics?.social_url?.reach_tier || (reachAutofillInfo ? reachAutofillInfo.label : 'Organic Social Propagation')}
+                    </div>
                   </div>
                 </div>
               </div>

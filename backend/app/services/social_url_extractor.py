@@ -128,6 +128,54 @@ class SocialUrlExtractor:
             "url_risk_score": round(min(0.99, max(0.05, risk_score)), 3),
         }
 
+    def estimate_reach_from_url(self, url: str) -> Dict[str, Any]:
+        """
+        Autofills and calculates audience reach based on platform engagement tier,
+        domain reputation, and viral transmission vectors.
+        """
+        plat = self.detect_platform(url)
+        heuristics = self.analyze_url_heuristics(url)
+        pid = plat["id"]
+
+        platform_base_reach = {
+            "x": 65000,
+            "youtube": 95000,
+            "instagram": 80000,
+            "telegram": 140000,
+            "facebook": 85000,
+            "reddit": 45000,
+            "tiktok": 110000,
+            "news_verified": 25000,
+            "web": 35000,
+        }
+
+        base = platform_base_reach.get(pid, 35000)
+        factors = [f"Base tier for {plat['platform']}: {base:,} users"]
+
+        if heuristics["viral_referral"]:
+            base += 45000
+            factors.append("+45,000 for viral referral parameters (e.g. ref=whatsapp/forward)")
+
+        if heuristics["is_shortener"]:
+            base += 30000
+            factors.append("+30,000 for high-velocity URL shortener broadcast")
+
+        if heuristics["has_suspicious_tld"]:
+            base += 50000
+            factors.append("+50,000 for disposable domain mass propagation vector")
+
+        if heuristics["brand_impersonation"]:
+            base += 40000
+            factors.append("+40,000 for official brand impersonation reach boost")
+
+        estimated_reach = int(min(1000000, max(5000, base)))
+        return {
+            "estimated_reach": estimated_reach,
+            "factors": factors,
+            "platform": plat["platform"],
+            "tier": "Critical Exposure" if estimated_reach > 100000 else "High Exposure" if estimated_reach > 50000 else "Elevated Exposure",
+        }
+
     def fetch_url_metadata(self, url: str) -> Dict[str, Any]:
         """
         Attempts live HTTP extraction using OpenGraph, Twitter Card, and oEmbed.
@@ -135,6 +183,7 @@ class SocialUrlExtractor:
         """
         platform_info = self.detect_platform(url)
         heuristics = self.analyze_url_heuristics(url)
+        reach_info = self.estimate_reach_from_url(url)
 
         metadata = {
             "url": url,
@@ -144,6 +193,9 @@ class SocialUrlExtractor:
             "platform_icon": platform_info["icon"],
             "domain": heuristics["domain"],
             "heuristics": heuristics,
+            "estimated_reach": reach_info["estimated_reach"],
+            "reach_factors": reach_info["factors"],
+            "reach_tier": reach_info["tier"],
             "title": "",
             "description": "",
             "image_url": "",
