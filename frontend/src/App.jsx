@@ -18,6 +18,19 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const [customClaim, setCustomClaim] = useState(null);
+  const [isReachHidden, setIsReachHidden] = useState(() => {
+    return localStorage.getItem('truthguard_hide_reach') === 'true';
+  });
+
+  const toggleHideReach = () => {
+    setIsReachHidden((prev) => {
+      const next = !prev;
+      localStorage.setItem('truthguard_hide_reach', next.toString());
+      return next;
+    });
+  };
+
   // Load queue data
   useEffect(() => {
     async function loadData() {
@@ -32,8 +45,14 @@ export default function App() {
     loadData();
   }, [capacity]);
 
-  const handleSelectClaim = (claimId) => {
-    setSelectedClaimId(claimId);
+  const handleSelectClaim = (claimIdOrClaim) => {
+    if (typeof claimIdOrClaim === 'object' && claimIdOrClaim !== null) {
+      setCustomClaim(claimIdOrClaim);
+      setSelectedClaimId(claimIdOrClaim.claim_id || 'LAB-CLAIM');
+    } else {
+      setCustomClaim(null);
+      setSelectedClaimId(claimIdOrClaim);
+    }
     setActiveTab('investigation');
   };
 
@@ -56,6 +75,7 @@ export default function App() {
   };
 
   const selectedClaim =
+    customClaim ||
     queueData?.items?.find((it) => it.claim_id === selectedClaimId) ||
     queueData?.items?.[0] ||
     null;
@@ -81,6 +101,8 @@ export default function App() {
           activeUser={activeUser}
           setActiveUser={setActiveUser}
           onQuickSearch={handleQuickSearch}
+          isReachHidden={isReachHidden}
+          toggleHideReach={toggleHideReach}
         />
 
         {/* Dynamic Screen Content */}
@@ -91,6 +113,7 @@ export default function App() {
               <TriageDashboard
                 onSelectClaim={handleSelectClaim}
                 onNavigateToQueue={() => setActiveTab('queue')}
+                isReachHidden={isReachHidden}
               />
             )}
 
@@ -102,6 +125,8 @@ export default function App() {
                 onSelectClaim={handleSelectClaim}
                 selectedClaimId={selectedClaimId}
                 onActionComplete={handleActionComplete}
+                isReachHidden={isReachHidden}
+                toggleHideReach={toggleHideReach}
               />
             )}
 
@@ -112,6 +137,9 @@ export default function App() {
                 activeUser={activeUser}
                 onActionComplete={handleActionComplete}
                 onBackToQueue={() => setActiveTab('queue')}
+                onNavigateToLab={() => setActiveTab('multimodal')}
+                isReachHidden={isReachHidden}
+                toggleHideReach={toggleHideReach}
               />
             )}
 
@@ -120,6 +148,8 @@ export default function App() {
               <TabMultimodalInvestigation
                 onSelectClaim={handleSelectClaim}
                 onNavigateToQueue={() => setActiveTab('queue')}
+                isReachHidden={isReachHidden}
+                toggleHideReach={toggleHideReach}
               />
             )}
 

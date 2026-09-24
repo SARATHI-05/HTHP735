@@ -7,6 +7,8 @@ export default function ModerationQueue({
   onSelectClaim,
   selectedClaimId,
   onActionComplete,
+  isReachHidden,
+  toggleHideReach,
 }) {
   const [districtFilter, setDistrictFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
@@ -585,7 +587,7 @@ export default function ModerationQueue({
                 <th className="py-space-md px-space-md">Regional Source</th>
                 <th className="py-space-md px-space-md">Lang</th>
                 <th className="py-space-md px-space-md">NLP Conf.</th>
-                <th className="py-space-md px-space-md">Est. Reach</th>
+                <th className="py-space-md px-space-md">{isReachHidden ? 'Reach (Hidden)' : 'Est. Reach'}</th>
                 <th className="py-space-md px-space-md">Risk Tier</th>
                 <th className="py-space-md px-space-md text-right">Moderation Status & Action</th>
               </tr>
@@ -646,8 +648,14 @@ export default function ModerationQueue({
 
                     {/* Est Reach */}
                     <td className="py-space-md px-space-md whitespace-nowrap">
-                      <div className="font-label-md font-semibold text-on-surface text-xs">{item.reach}</div>
-                      <div className="text-body-sm text-outline text-[11px]">{item.velocity}</div>
+                      {isReachHidden ? (
+                        <span className="font-mono text-slate-400 text-[11px] italic">[Hidden]</span>
+                      ) : (
+                        <>
+                          <div className="font-label-md font-semibold text-on-surface text-xs">{item.reach}</div>
+                          <div className="text-body-sm text-outline text-[11px]">{item.velocity}</div>
+                        </>
+                      )}
                     </td>
 
                     {/* Risk Tier */}

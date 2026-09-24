@@ -6,6 +6,9 @@ export default function ItemInvestigation({
   activeUser = 'elena.rostova',
   onActionComplete,
   onBackToQueue,
+  onNavigateToLab,
+  isReachHidden,
+  toggleHideReach,
 }) {
   const [toastMessage, setToastMessage] = useState(null);
   const [submittingAction, setSubmittingAction] = useState(null);
@@ -106,13 +109,19 @@ export default function ItemInvestigation({
         <div className="flex items-center gap-space-md">
           <span className="material-symbols-outlined text-error text-[28px]">warning</span>
           <div>
-            <div className="flex items-center gap-space-sm mb-space-xs">
+            <div className="flex items-center gap-space-sm mb-space-xs flex-wrap">
               <span className="font-label-sm uppercase bg-red-50 text-error px-space-sm py-space-xs rounded-full font-bold text-[10px] border border-error/20">
                 High-Risk Threat
               </span>
               <span className="font-label-sm uppercase text-outline text-[11px] font-mono">
                 Case ID: {selectedClaim?.claim_id || '#TN-2023-8841'}
               </span>
+              {selectedClaim?.fromMultimodalLab && (
+                <span className="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full text-[10px] border border-purple-300 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[13px]">biotech</span>
+                  From Multimodal Lab
+                </span>
+              )}
               <span className="bg-primary/10 text-primary font-bold px-2 py-0.5 rounded text-[10px] border border-primary/20">
                 DSA Article 34 Protocol
               </span>
@@ -125,7 +134,39 @@ export default function ItemInvestigation({
           </div>
         </div>
 
-        <div className="flex items-center gap-space-sm">
+        <div className="flex items-center gap-space-sm flex-wrap">
+          {onNavigateToLab && (
+            <button
+              onClick={onNavigateToLab}
+              className="px-space-md py-space-sm rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 transition-all font-label-md flex items-center gap-space-xs border border-purple-200 shadow-xs text-xs font-semibold cursor-pointer"
+              title="Test or analyze media files in Multimodal Lab"
+            >
+              <span className="material-symbols-outlined text-[16px]">biotech</span>
+              Multimodal Lab
+            </button>
+          )}
+
+          {toggleHideReach && (
+            <button
+              onClick={toggleHideReach}
+              className={`px-space-md py-space-sm rounded-xl transition-all font-label-md flex items-center gap-space-xs border shadow-xs text-xs font-semibold cursor-pointer ${
+                isReachHidden
+                  ? 'bg-slate-100 text-slate-700 border-slate-300'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+              }`}
+              title={
+                isReachHidden
+                  ? 'Estimated Reach is hidden across app. Click to show.'
+                  : 'Estimated Reach is visible in real-time. Click to hide.'
+              }
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {isReachHidden ? 'visibility_off' : 'visibility'}
+              </span>
+              <span>{isReachHidden ? 'Reach: Hidden' : 'Reach: Live URL'}</span>
+            </button>
+          )}
+
           {onBackToQueue && (
             <button
               onClick={onBackToQueue}
@@ -302,6 +343,43 @@ export default function ItemInvestigation({
                 selectedClaim?.title ||
                 "URGENT: Govt officials in Madurai are locking ration shops and demanding mandatory biometric re-verification linked directly to voter ID cards. If you don't scan by tomorrow evening, your monthly grain subsidy will be permanently cancelled! Forwarded as received."}"
             </p>
+
+            {/* Real-World Ingested Details: URL & Estimated Reach */}
+            {(selectedClaim?.url || selectedClaim?.reach) && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 text-xs">
+                {selectedClaim?.url ? (
+                  <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                    <span className="material-symbols-outlined text-primary text-[16px]">link</span>
+                    <span className="font-semibold text-outline">Ingested Social URL:</span>
+                    <a
+                      href={selectedClaim.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-primary hover:underline truncate max-w-sm font-semibold"
+                      title={selectedClaim.url}
+                    >
+                      {selectedClaim.url}
+                    </a>
+                  </div>
+                ) : (
+                  <span className="text-outline font-semibold">Incident Sourced from Multimodal Ingestion</span>
+                )}
+
+                {/* Estimated Reach (Respects isReachHidden) */}
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-outline">Estimated Reach:</span>
+                  {isReachHidden ? (
+                    <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[11px] font-mono">
+                      [HIDDEN]
+                    </span>
+                  ) : (
+                    <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded text-[11px] font-mono border border-emerald-200">
+                      {selectedClaim?.reach ? `${selectedClaim.reach}` : '245K users'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Manipulated Video Frame Comparison */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">

@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { investigateMultimodal, submitModeratorAction } from '../services/api';
 
-export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateToQueue }) {
+export default function TabMultimodalInvestigation({
+  onSelectClaim,
+  onNavigateToQueue,
+  isReachHidden,
+  toggleHideReach,
+}) {
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [fileType, setFileType] = useState(null);
@@ -321,6 +326,33 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
     URL.revokeObjectURL(u);
   };
 
+  const handleOpenInDeepInvestigation = () => {
+    const claimId = report?.claim_id || `LAB-${Date.now().toString().slice(-4)}`;
+    const platName = report?.forensics?.social_url?.platform || (detectedPlatform ? detectedPlatform.name : 'Multimodal Lab');
+    const claimTitle = report?.forensics?.social_url?.title || textContent?.slice(0, 100) || (file ? file.name : 'Multimodal Forensic Incident');
+    const claimDossier = {
+      claim_id: claimId,
+      title: claimTitle,
+      statement: textContent || report?.forensics?.social_url?.title || url || claimTitle,
+      meta: `Platform: ${platName} • Case ID: #${claimId}`,
+      sourceName: platName,
+      sourceIcon: report?.forensics?.social_url?.platform_icon || 'biotech',
+      reach: isReachHidden ? null : `${Math.round(reach / 1000)}K`,
+      velocity: '+24K/hr',
+      riskTier: (report?.triage?.priority_score >= 80) ? 'HIGH' : (report?.triage?.priority_score >= 65) ? 'MEDIUM' : 'LOW',
+      riskTierStyle: (report?.triage?.priority_score >= 80) ? 'red' : 'grey',
+      score: report?.triage?.priority_score ? Number(report.triage.priority_score).toFixed(1) : '86.4',
+      isCritical: Number(report?.triage?.priority_score || 86) >= 80,
+      url: url,
+      filePreview: filePreview,
+      fromMultimodalLab: true,
+      report: report,
+    };
+    if (onSelectClaim) {
+      onSelectClaim(claimDossier);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full gap-space-lg">
       {/* Toast Alert */}
@@ -575,37 +607,78 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
             {/* Operational Parameters (Reach & Topic) */}
             <div className="grid grid-cols-2 gap-space-sm">
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-[11px] font-semibold text-outline uppercase tracking-wider">
-                    Estimated Reach
-                  </label>
-                  {reachAutofillInfo && (
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[11px]">bolt</span>
-                      Autofilled from URL
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="number"
-                  value={reach}
-                  onChange={(e) => {
-                    setReach(Number(e.target.value));
-                    setReachAutofillInfo(null);
-                  }}
-                  className="w-full bg-surface-container-low text-on-surface p-space-sm rounded-xl text-xs outline-none border border-outline-variant/40 font-mono font-semibold"
-                  placeholder="e.g. 50000"
-                />
-                {reachAutofillInfo && (
-                  <div className="mt-1 text-[10px] text-outline flex flex-col gap-0.5 bg-surface-container-low p-1.5 rounded-lg border border-outline-variant/20">
-                    <span className="font-semibold text-on-surface flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px] text-secondary">trending_up</span>
-                      {reachAutofillInfo.label}
-                    </span>
-                    {reachAutofillInfo.modifiers.length > 0 && (
-                      <span className="text-secondary font-mono text-[9.5px]">
-                        {reachAutofillInfo.modifiers.join(' • ')}
+                {isReachHidden ? (
+                  <div className="bg-surface-container-low p-2 rounded-xl border border-dashed border-outline-variant/40 flex flex-col justify-between">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-semibold text-outline uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">visibility_off</span>
+                        Estimated Reach
                       </span>
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">
+                        HIDDEN
+                      </span>
+                    </div>
+                    <p className="text-[10.5px] text-outline mt-1 leading-snug">
+                      Audience exposure hidden from application view.
+                    </p>
+                    {toggleHideReach && (
+                      <button
+                        type="button"
+                        onClick={toggleHideReach}
+                        className="mt-1 text-[10px] font-bold text-primary hover:underline flex items-center gap-1 self-start"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">visibility</span>
+                        Show Real-Time Reach
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-1">
+                        <label className="block text-[11px] font-semibold text-outline uppercase tracking-wider">
+                          Estimated Reach
+                        </label>
+                        {toggleHideReach && (
+                          <button
+                            type="button"
+                            onClick={toggleHideReach}
+                            className="text-outline hover:text-error text-[10px] flex items-center ml-0.5"
+                            title="Hide Estimated Reach from application"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">visibility_off</span>
+                          </button>
+                        )}
+                      </div>
+                      {reachAutofillInfo && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[11px]">bolt</span>
+                          Autofilled from URL
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      value={reach}
+                      onChange={(e) => {
+                        setReach(Number(e.target.value));
+                        setReachAutofillInfo(null);
+                      }}
+                      className="w-full bg-surface-container-low text-on-surface p-space-sm rounded-xl text-xs outline-none border border-outline-variant/40 font-mono font-semibold"
+                      placeholder="e.g. 50000"
+                    />
+                    {reachAutofillInfo && (
+                      <div className="mt-1 text-[10px] text-outline flex flex-col gap-0.5 bg-surface-container-low p-1.5 rounded-lg border border-outline-variant/20">
+                        <span className="font-semibold text-on-surface flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-secondary">trending_up</span>
+                          {reachAutofillInfo.label}
+                        </span>
+                        {reachAutofillInfo.modifiers.length > 0 && (
+                          <span className="text-secondary font-mono text-[9.5px]">
+                            {reachAutofillInfo.modifiers.join(' • ')}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -681,13 +754,36 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
                   </div>
 
                   <div className="bg-surface-container-low p-space-sm rounded-xl border border-outline-variant/20">
-                    <div className="text-[10px] uppercase font-bold text-outline">Audience Exposure</div>
-                    <div className="text-headline-lg font-bold text-on-surface text-2xl font-mono mt-0.5">
-                      {Number(report.reach || reach).toLocaleString()}
+                    <div className="flex justify-between items-center">
+                      <div className="text-[10px] uppercase font-bold text-outline">Audience Exposure</div>
+                      {toggleHideReach && (
+                        <button
+                          type="button"
+                          onClick={toggleHideReach}
+                          className="text-[10px] text-outline hover:text-primary flex items-center"
+                          title={isReachHidden ? "Reveal Reach" : "Hide Reach"}
+                        >
+                          <span className="material-symbols-outlined text-[13px]">
+                            {isReachHidden ? 'visibility' : 'visibility_off'}
+                          </span>
+                        </button>
+                      )}
                     </div>
-                    <div className="text-[10px] text-emerald-600 font-semibold mt-0.5 truncate">
-                      {report.forensics?.social_url?.reach_tier || (reachAutofillInfo ? reachAutofillInfo.label : 'Organic Social Propagation')}
-                    </div>
+                    {isReachHidden ? (
+                      <div className="mt-1">
+                        <div className="text-sm font-bold text-slate-500 font-mono">[REACH HIDDEN]</div>
+                        <div className="text-[10px] text-outline mt-0.5">Hidden by operator preference</div>
+                      </div>
+                    ) : (
+                      <div className="mt-0.5">
+                        <div className="text-headline-lg font-bold text-on-surface text-2xl font-mono">
+                          {Number(report.reach || reach).toLocaleString()}
+                        </div>
+                        <div className="text-[10px] text-emerald-600 font-semibold mt-0.5 truncate">
+                          {report.forensics?.social_url?.reach_tier || (reachAutofillInfo ? reachAutofillInfo.label : 'Organic Social Propagation')}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -913,19 +1009,30 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
                 </div>
               )}
 
-              {/* Action Bar: Push into Queue */}
-              <div className="bg-surface-container-lowest border border-outline-variant/30 p-space-md rounded-xl flex items-center justify-between shadow-xs">
+              {/* Action Bar: Deep Investigation & Queue Dispatch */}
+              <div className="bg-surface-container-lowest border border-outline-variant/30 p-space-md rounded-xl flex flex-wrap items-center justify-between gap-space-sm shadow-xs">
                 <span className="text-xs text-outline font-semibold">
-                  Triage complete. Ready to dispatch across operational moderation shifts.
+                  Triage complete. Ready to dispatch or investigate in full dossier view.
                 </span>
-                <button
-                  type="button"
-                  onClick={handlePushToQueue}
-                  className="px-space-md py-space-sm rounded-xl bg-primary text-on-primary hover:opacity-90 font-semibold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add_task</span>
-                  Inject Dossier into Moderation Queue
-                </button>
+                <div className="flex items-center gap-space-sm">
+                  <button
+                    type="button"
+                    onClick={handleOpenInDeepInvestigation}
+                    className="px-space-md py-space-sm rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition shadow-md shadow-amber-400/20 flex items-center gap-1.5 cursor-pointer"
+                    title="Transfer incident into Investigation view for detailed NLP signals & DSA compliance checks"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">psychology</span>
+                    ⚡ Open in Deep Investigation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePushToQueue}
+                    className="px-space-md py-space-sm rounded-xl bg-primary text-on-primary hover:opacity-90 font-semibold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add_task</span>
+                    Inject into Moderation Queue
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
