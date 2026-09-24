@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  triage-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: misinfo-triage:latest
+    container_name: misinfo-triage-app
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - APP_ENV=production
+    volumes:
+      - ./data/audit_log.jsonl:/app/data/audit_log.jsonl
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
