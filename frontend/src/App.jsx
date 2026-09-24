@@ -123,6 +123,29 @@ export default function App() {
             {activeTab === 'audit' && (
               <TabAudit />
             )}
+
+            {/* Screen 6: System & Model Settings */}
+            {activeTab === 'settings' && (
+              <div className="bg-surface-container-lowest border border-outline-variant/30 p-space-xl rounded-xl shadow-xs">
+                <div className="flex items-center gap-space-sm mb-space-md">
+                  <span className="material-symbols-outlined text-primary text-[24px]">settings</span>
+                  <h2 className="text-headline-lg font-bold text-on-surface text-xl">Platform &amp; Model Settings</h2>
+                </div>
+                <p className="text-body-sm text-outline text-xs mb-space-lg">
+                  Configure regional surveillance thresholds, GBDT decision boundaries, and automated webhook triggers.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md text-xs">
+                  <div className="p-space-md bg-surface-container-low rounded-xl border border-outline-variant/20">
+                    <span className="font-bold text-on-surface block mb-1">Active Model Checkpoint</span>
+                    <span className="text-outline font-mono">gbdt-calibrated-v1.4.0 (Tamil Nadu Custom)</span>
+                  </div>
+                  <div className="p-space-md bg-surface-container-low rounded-xl border border-outline-variant/20">
+                    <span className="font-bold text-on-surface block mb-1">State Cyber Cell Webhook</span>
+                    <span className="text-emerald-600 font-mono font-semibold">ONLINE • Latency: 14ms</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
