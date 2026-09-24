@@ -42,7 +42,12 @@ FEATURE_GROUPS: Dict[str, List[str]] = {
         "src_venue_mailer_print",
         "src_venue_other",
     ],
-    "consistency": [],  # Starts empty; populated in Phase 7
+    "consistency": [
+        "max_contradiction",
+        "max_entailment",
+        "mean_neutral",
+        "top_similarity",
+    ],
     "text": ["text_score"],
 }
 
@@ -235,6 +240,51 @@ def build_feature_matrices(
         train_df, valid_df, test_df, models_dir=models_dir
     )
 
+    # 4. Consistency features (from Phase 7 offline tables if available)
+    consistency_cols = ["max_contradiction", "max_entailment", "mean_neutral", "top_similarity"]
+    extra_meta_cols = ["best_evidence_text", "best_evidence_relation"]
+
+    def load_consistency(split_name: str, base_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        c_path = processed_dir / f"consistency_{split_name}.parquet"
+        if not c_path.exists():
+            c_path = processed_dir / "consistency.parquet"
+
+        if c_path.exists():
+            c_df = pd.read_parquet(c_path)
+            # Merge on post_id
+            m = pd.merge(base_df[["post_id"]], c_df, on="post_id", how="left")
+            # Fill missing consistency rows with neutral defaults
+            m["max_contradiction"] = m["max_contradiction"].fillna(0.0).astype(float)
+            m["max_entailment"] = m["max_entailment"].fillna(0.0).astype(float)
+            m["mean_neutral"] = m["mean_neutral"].fillna(1.0).astype(float)
+            m["top_similarity"] = m["top_similarity"].fillna(0.0).astype(float)
+            m["best_evidence_text"] = m["best_evidence_text"].fillna("")
+            m["best_evidence_relation"] = m["best_evidence_relation"].fillna("neutral")
+            return m[consistency_cols], m[extra_meta_cols]
+        else:
+            # Fallback zeros if consistency not yet computed
+            c_feats = pd.DataFrame(
+                {
+                    "max_contradiction": np.zeros(len(base_df)),
+                    "max_entailment": np.zeros(len(base_df)),
+                    "mean_neutral": np.ones(len(base_df)),
+                    "top_similarity": np.zeros(len(base_df)),
+                },
+                index=base_df.index,
+            )
+            c_meta = pd.DataFrame(
+                {
+                    "best_evidence_text": [""] * len(base_df),
+                    "best_evidence_relation": ["neutral"] * len(base_df),
+                },
+                index=base_df.index,
+            )
+            return c_feats, c_meta
+
+    con_train, con_meta_train = load_consistency("train", train_df)
+    con_valid, con_meta_valid = load_consistency("valid", valid_df)
+    con_test, con_meta_test = load_consistency("test", test_df)
+
     # Metadata and target columns to preserve
     meta_cols = [
         "post_id",
@@ -249,7 +299,14 @@ def build_feature_matrices(
         "harm_topic_weight",
     ]
 
-    def assemble(df_meta: pd.DataFrame, ling: pd.DataFrame, src: pd.DataFrame, text_sc: np.ndarray) -> pd.DataFrame:
+    def assemble(
+        df_meta: pd.DataFrame,
+        ling: pd.DataFrame,
+        src: pd.DataFrame,
+        text_sc: np.ndarray,
+        con: pd.DataFrame,
+        con_meta: pd.DataFrame,
+    ) -> pd.DataFrame:
         out = df_meta[meta_cols].copy()
         # Join linguistic
         for col in ling.columns:
@@ -257,13 +314,19 @@ def build_feature_matrices(
         # Join source
         for col in src.columns:
             out[col] = src[col].values
+        # Join consistency features
+        for col in con.columns:
+            out[col] = con[col].values
+        # Join consistency extra metadata
+        for col in con_meta.columns:
+            out[col] = con_meta[col].values
         # Join text score
         out["text_score"] = text_sc
         return out
 
-    feat_train = assemble(train_df, ling_train, src_train, text_trn)
-    feat_valid = assemble(valid_df, ling_valid, src_valid, text_val)
-    feat_test = assemble(test_df, ling_test, src_test, text_tst)
+    feat_train = assemble(train_df, ling_train, src_train, text_trn, con_train, con_meta_train)
+    feat_valid = assemble(valid_df, ling_valid, src_valid, text_val, con_valid, con_meta_valid)
+    feat_test = assemble(test_df, ling_test, src_test, text_tst, con_test, con_meta_test)
 
     # Persist feature tables
     feat_train.to_parquet(processed_dir / "features_train.parquet", index=False)

@@ -1,5 +1,5 @@
 Strategy,Reviewed Items,Misleading Caught,Precision (% True Misinfo),Harm Exposure Caught (Reach),Harm Exposure Covered (%),Harm Lift (Our System)
-Risk Only,600,401,66.83333333333333,2185009,70.57814405763546,+21.3% harm lift
-Reach Only,600,252,42.0,2766859,89.3725257374982,-4.2% harm lift
-Random,600,267,44.5,1395136,45.06439542720113,+90.0% harm lift
-Our Priority (System),600,390,65.0,2650270,85.60657546565233,OPTIMAL (System)
+Risk Only,600,403,67.16666666666666,2242985,72.45083130051889,+21.2% harm lift
+Reach Only,600,252,42.0,2766859,89.3725257374982,-1.7% harm lift
+Random,600,267,44.5,1395136,45.06439542720113,+94.9% harm lift
+Our Priority (System),600,391,65.16666666666666,2718815,87.82065279184668,OPTIMAL (System)

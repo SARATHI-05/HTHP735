@@ -167,17 +167,30 @@ def format_plain_english_rationale(
             point_idx += 1
 
         elif grp_name == "consistency":
-            # Populated in Phase 7 when consistency features exist
             ev_snippet = row.get("best_evidence_text")
             ev_contra = row.get("max_contradiction")
-            if ev_snippet and ev_contra is not None and float(ev_contra) > 0.4:
-                snippet_trunc = str(ev_snippet)[:60].strip()
+            if ev_snippet and ev_contra is not None and float(ev_contra) >= 0.40:
+                snippet_trunc = str(ev_snippet)[:65].strip()
                 desc = f"Consistency: contradicts retrieved evidence '{snippet_trunc}...' ({float(ev_contra):.2f})"
                 narrative_points.append(f"({point_idx}) {desc}.")
                 point_idx += 1
 
         if point_idx > 3:
             break
+
+    # If consistency was not in top groups by SHAP but has strong contradiction & similarity, append it as requested
+    has_consistency_point = any("Consistency:" in pt for pt in narrative_points)
+    ev_contra_val = float(row.get("max_contradiction", 0.0))
+    ev_sim_val = float(row.get("top_similarity", 0.0))
+    ev_snippet_val = str(row.get("best_evidence_text", "")).strip()
+
+    if not has_consistency_point and ev_contra_val >= 0.60 and ev_sim_val >= 0.40 and ev_snippet_val:
+        snippet_trunc = ev_snippet_val[:65].strip()
+        desc = f"Consistency: contradicts retrieved evidence '{snippet_trunc}...' ({ev_contra_val:.2f})"
+        if len(narrative_points) >= 3:
+            narrative_points[2] = f"(3) {desc}."
+        else:
+            narrative_points.append(f"({len(narrative_points) + 1}) {desc}.")
 
     full_rationale = f"{header} {' '.join(narrative_points)}"
     return full_rationale
@@ -284,6 +297,10 @@ def precompute_test_explanations(
         "label_raw",
         "misleading",
     ]
+    for extra_col in ["best_evidence_text", "best_evidence_relation", "max_contradiction", "top_similarity"]:
+        if extra_col in scored_test.columns and extra_col not in meta_cols:
+            meta_cols.append(extra_col)
+
     merged = pd.merge(scored_test[meta_cols], expl_df, on="post_id", how="inner")
 
     out_path = processed_dir / output_name
