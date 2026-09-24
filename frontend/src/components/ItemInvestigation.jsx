@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
 import { submitModeratorAction } from '../services/api';
 
-export default function ItemInvestigation() {
+export default function ItemInvestigation({
+  selectedClaim,
+  activeUser = 'elena.rostova',
+  onActionComplete,
+  onBackToQueue,
+}) {
   const [toastMessage, setToastMessage] = useState(null);
 
   const handleAction = async (actionLabel) => {
-    await submitModeratorAction('#TN-2023-8841', { action: actionLabel, reviewer_id: 'elena.rostova' });
+    const claimId = selectedClaim?.claim_id || '#TN-2023-8841';
+    await submitModeratorAction(claimId, { action: actionLabel, reviewer_id: activeUser || 'elena.rostova' });
     setToastMessage(`Verdict recorded: ${actionLabel}`);
+    if (onActionComplete) {
+      onActionComplete(claimId, actionLabel);
+    }
     setTimeout(() => setToastMessage(null), 4000);
   };
 
@@ -32,16 +41,25 @@ export default function ItemInvestigation() {
                 High-Risk Threat
               </span>
               <span className="font-label-sm uppercase text-outline text-[11px] font-mono">
-                Case ID: #TN-2023-8841
+                Case ID: {selectedClaim?.claim_id || '#TN-2023-8841'}
               </span>
             </div>
             <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold text-xl">
-              Electoral rumor regarding biometric subsidy verification in rural Madurai
+              {selectedClaim?.statement || selectedClaim?.title || 'Electoral rumor regarding biometric subsidy verification in rural Madurai'}
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-space-sm">
+          {onBackToQueue && (
+            <button
+              onClick={onBackToQueue}
+              className="px-space-md py-space-sm rounded-xl bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all font-label-md flex items-center gap-space-xs border border-outline-variant/40 shadow-xs text-xs font-semibold"
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              Back to Queue
+            </button>
+          )}
           <button
             onClick={() => {
               navigator.clipboard?.writeText(window.location.href);
@@ -91,7 +109,7 @@ export default function ItemInvestigation() {
             </div>
 
             <p className="font-body-md text-on-surface text-sm leading-relaxed">
-              "URGENT: Govt officials in Madurai are locking ration shops and demanding mandatory biometric re-verification linked directly to voter ID cards. If you don't scan by tomorrow evening, your monthly grain subsidy will be permanently cancelled! Forwarded as received."
+              "{selectedClaim?.statement || selectedClaim?.title || "URGENT: Govt officials in Madurai are locking ration shops and demanding mandatory biometric re-verification linked directly to voter ID cards. If you don't scan by tomorrow evening, your monthly grain subsidy will be permanently cancelled! Forwarded as received."}"
             </p>
 
             {/* Manipulated Video Frame Comparison */}

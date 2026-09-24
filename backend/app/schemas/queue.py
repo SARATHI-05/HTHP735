@@ -38,6 +38,7 @@ class QueueResponse(BaseModel):
     items: List[QueueItemSummary]
 
 class ModeratorActionRequest(BaseModel):
+    claim_id: Optional[str] = Field(None, description="Target claim ID if provided in request body")
     reviewer_id: Optional[str] = Field(None, description="Analyst session username")
     moderator_id: Optional[str] = Field(None, description="Alternative key for analyst username")
     verdict: Optional[str] = Field(None, description="VERIFIED_MISLEADING, VERIFIED_TRUE, ESCALATE, DISMISS, approve, etc.")

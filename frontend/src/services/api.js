@@ -32,8 +32,9 @@ export async function fetchQueue(params = {}) {
 }
 
 export async function fetchClaimDetail(claimId) {
+  const safeId = encodeURIComponent(String(claimId || '').replace(/^#/, '').trim());
   try {
-    const res = await fetch(`${API_BASE}/claims/${claimId}`);
+    const res = await fetch(`${API_BASE}/claims/${safeId}`);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     return data.claim || data;
@@ -44,11 +45,15 @@ export async function fetchClaimDetail(claimId) {
 }
 
 export async function submitModeratorAction(claimId, payload) {
+  const safeId = encodeURIComponent(String(claimId || '').replace(/^#/, '').trim());
   try {
-    const res = await fetch(`${API_BASE}/queue/${claimId}/action`, {
+    const res = await fetch(`${API_BASE}/queue/${safeId}/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        claim_id: claimId,
+      }),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
