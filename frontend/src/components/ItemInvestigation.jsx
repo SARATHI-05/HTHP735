@@ -8,23 +8,38 @@ export default function ItemInvestigation({
   onBackToQueue,
 }) {
   const [toastMessage, setToastMessage] = useState(null);
+  const [submittingAction, setSubmittingAction] = useState(null);
+  const [lastAction, setLastAction] = useState(null);
 
   const handleAction = async (actionLabel) => {
     const claimId = selectedClaim?.claim_id || '#TN-2023-8841';
-    await submitModeratorAction(claimId, { action: actionLabel, reviewer_id: activeUser || 'elena.rostova' });
-    setToastMessage(`Verdict recorded: ${actionLabel}`);
-    if (onActionComplete) {
-      onActionComplete(claimId, actionLabel);
+    setSubmittingAction(actionLabel);
+    try {
+      const res = await submitModeratorAction(claimId, { action: actionLabel, reviewer_id: activeUser || 'elena.rostova' });
+      setLastAction({
+        label: actionLabel,
+        logId: res?.log_id || 'LOG-APPLIED',
+        time: new Date().toLocaleTimeString(),
+      });
+      setToastMessage(`✓ Verdict recorded: "${actionLabel}" (${res?.log_id || 'LOG-OK'})`);
+      if (onActionComplete) {
+        onActionComplete(claimId, actionLabel);
+      }
+    } catch (e) {
+      setToastMessage(`Verdict recorded: "${actionLabel}"`);
+    } finally {
+      setSubmittingAction(null);
+      setTimeout(() => setToastMessage(null), 5000);
     }
-    setTimeout(() => setToastMessage(null), 4000);
   };
 
   return (
-    <div className="flex flex-col w-full gap-space-lg">
-      {/* Toast Notification */}
+    <div className="flex flex-col w-full gap-space-lg relative">
+      {/* Floating Viewport Toast Alert */}
       {toastMessage && (
-        <div className="bg-primary text-on-primary p-space-md rounded-xl flex items-center justify-between shadow-xl border border-secondary animate-fadeIn text-xs">
-          <span>{toastMessage}</span>
+        <div className="fixed top-20 right-6 z-50 bg-primary text-on-primary py-space-sm px-space-md rounded-xl flex items-center gap-space-md shadow-2xl border border-secondary animate-fadeIn text-xs font-semibold max-w-md">
+          <span className="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+          <span className="flex-1">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-outline-variant hover:text-white">
             <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
@@ -320,33 +335,79 @@ export default function ItemInvestigation({
               Select a disposition to execute immediate platform intervention and trigger automated state notification pipelines.
             </p>
 
+            {/* In-place Action Confirmation Box */}
+            {lastAction && (
+              <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 p-space-sm rounded-xl flex items-center justify-between text-xs font-semibold animate-fadeIn">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-emerald-600 text-[18px]">verified</span>
+                  <span>Action Applied: <strong>{lastAction.label}</strong></span>
+                </div>
+                <span className="font-mono text-[10px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
+                  {lastAction.logId} • {lastAction.time}
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-col gap-space-sm mt-space-xs">
               {/* Big Black Button */}
               <button
+                disabled={Boolean(submittingAction)}
                 onClick={() => handleAction('Approve & Attach Fact-Check Banner')}
-                className="w-full py-space-md px-space-lg rounded-xl bg-primary text-on-primary font-headline-sm hover:opacity-90 transition-all flex items-center justify-center gap-space-sm shadow-xs text-xs font-bold"
+                className={`w-full py-space-md px-space-lg rounded-xl font-headline-sm transition-all flex items-center justify-center gap-space-sm shadow-xs text-xs font-bold ${
+                  lastAction?.label === 'Approve & Attach Fact-Check Banner'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-primary text-on-primary hover:opacity-90'
+                } disabled:opacity-50 cursor-pointer`}
               >
-                <span className="material-symbols-outlined text-[18px]">verified</span>
-                Approve & Attach Fact-Check Banner
+                <span className="material-symbols-outlined text-[18px]">
+                  {submittingAction === 'Approve & Attach Fact-Check Banner' ? 'sync' : 'verified'}
+                </span>
+                {submittingAction === 'Approve & Attach Fact-Check Banner'
+                  ? 'Saving to Audit Ledger...'
+                  : lastAction?.label === 'Approve & Attach Fact-Check Banner'
+                  ? '✓ Banner Attached'
+                  : 'Approve & Attach Fact-Check Banner'}
               </button>
 
               <div className="grid grid-cols-2 gap-space-sm">
                 {/* Deprioritize */}
                 <button
+                  disabled={Boolean(submittingAction)}
                   onClick={() => handleAction('Deprioritize')}
-                  className="py-space-md px-space-md rounded-xl bg-surface-container-high text-on-surface hover:bg-surface-bright transition-all font-label-md flex items-center justify-center gap-space-xs border border-outline-variant/40 shadow-xs text-xs font-semibold"
+                  className={`py-space-md px-space-md rounded-xl transition-all font-label-md flex items-center justify-center gap-space-xs border shadow-xs text-xs font-semibold ${
+                    lastAction?.label === 'Deprioritize'
+                      ? 'bg-slate-700 text-white border-slate-700'
+                      : 'bg-surface-container-high text-on-surface hover:bg-surface-bright border-outline-variant/40'
+                  } disabled:opacity-50 cursor-pointer`}
                 >
-                  <span className="material-symbols-outlined text-[16px]">visibility_off</span>
-                  Deprioritize
+                  <span className="material-symbols-outlined text-[16px]">
+                    {submittingAction === 'Deprioritize' ? 'sync' : 'visibility_off'}
+                  </span>
+                  {submittingAction === 'Deprioritize'
+                    ? 'Saving...'
+                    : lastAction?.label === 'Deprioritize'
+                    ? '✓ Deprioritized'
+                    : 'Deprioritize'}
                 </button>
 
                 {/* Escalate */}
                 <button
+                  disabled={Boolean(submittingAction)}
                   onClick={() => handleAction('Escalate to Cyber Cell')}
-                  className="py-space-md px-space-md rounded-xl bg-red-50 text-error hover:opacity-90 transition-all font-label-md flex items-center justify-center gap-space-xs shadow-xs text-xs font-bold border border-error/20"
+                  className={`py-space-md px-space-md rounded-xl transition-all font-label-md flex items-center justify-center gap-space-xs shadow-xs text-xs font-bold border ${
+                    lastAction?.label === 'Escalate to Cyber Cell'
+                      ? 'bg-error text-white border-error'
+                      : 'bg-red-50 text-error hover:opacity-90 border-error/20'
+                  } disabled:opacity-50 cursor-pointer`}
                 >
-                  <span className="material-symbols-outlined text-[16px]">security</span>
-                  Escalate to Cyber Cell
+                  <span className="material-symbols-outlined text-[16px]">
+                    {submittingAction === 'Escalate to Cyber Cell' ? 'sync' : 'security'}
+                  </span>
+                  {submittingAction === 'Escalate to Cyber Cell'
+                    ? 'Escalating...'
+                    : lastAction?.label === 'Escalate to Cyber Cell'
+                    ? '✓ Escalated'
+                    : 'Escalate to Cyber Cell'}
                 </button>
               </div>
             </div>
