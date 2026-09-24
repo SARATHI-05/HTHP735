@@ -14,6 +14,7 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
   const [report, setReport] = useState(null);
   const [showElaHeatmap, setShowElaHeatmap] = useState(false);
   const [queueActionToast, setQueueActionToast] = useState(null);
+  const [isAutoPilotAnalysis, setIsAutoPilotAnalysis] = useState(false);
 
   // Platform detection helper for URL input badge
   const getPlatformFromUrl = (u) => {
@@ -178,14 +179,10 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
   const loadSample = (s) => {
     setTextContent(s.text || '');
     setUrl(s.url || '');
-    if (s.url) {
-      const reachEstimate = calculateEstimatedReachFromUrl(s.url);
-      setReach(s.reach || reachEstimate?.reach || 65000);
-      setReachAutofillInfo(reachEstimate);
-    } else {
-      setReach(s.reach || 65000);
-      setReachAutofillInfo(null);
-    }
+    const calculatedReach = s.url ? calculateEstimatedReachFromUrl(s.url) : null;
+    const finalReach = s.reach || calculatedReach?.reach || 65000;
+    setReach(finalReach);
+    setReachAutofillInfo(calculatedReach);
     setTopic(s.topic);
     setFileType(s.type);
     if (s.previewUrl) {
@@ -195,6 +192,35 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
     }
     setFile(null);
     setReport(null);
+
+    // If Auto-Pilot is enabled, immediately trigger the forensic pipeline
+    if (isAutoPilotAnalysis) {
+      setTimeout(() => {
+        executeDirectInvestigation({
+          url: s.url || '',
+          textContent: s.text || '',
+          reach: finalReach,
+          topic: s.topic,
+          fileType: s.type,
+        });
+      }, 50);
+    }
+  };
+
+  const executeDirectInvestigation = async (params) => {
+    setLoading(true);
+    setReport(null);
+    const formData = new FormData();
+    if (params.url) formData.append('url', params.url);
+    if (params.textContent) formData.append('text_content', params.textContent);
+    formData.append('reach', (params.reach || 65000).toString());
+    formData.append('topic', params.topic || 'Elections');
+
+    const res = await investigateMultimodal(formData);
+    setLoading(false);
+    if (res) {
+      setReport(res);
+    }
   };
 
   const handleRunInvestigation = async (e) => {
@@ -331,6 +357,36 @@ export default function TabMultimodalInvestigation({ onSelectClaim, onNavigateTo
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Auto-Pilot Toggle */}
+          <div className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-xl border border-slate-700 text-xs shadow-xs">
+            <span className="material-symbols-outlined text-amber-400 text-[18px]">bolt</span>
+            <span className="font-semibold text-xs text-slate-200">Auto-Pilot Scan:</span>
+            <button
+              onClick={() => {
+                const next = !isAutoPilotAnalysis;
+                setIsAutoPilotAnalysis(next);
+                setQueueActionToast(
+                  next
+                    ? '⚡ Auto-Pilot Scan Enabled: Clicking incidents or pasting links will immediately trigger ML forensics.'
+                    : 'Auto-Pilot Disabled.'
+                );
+                setTimeout(() => setQueueActionToast(null), 4000);
+              }}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 ${
+                isAutoPilotAnalysis
+                  ? 'bg-amber-400 text-slate-950 font-extrabold shadow-xs'
+                  : 'bg-white/20 text-slate-300 hover:bg-white/30'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isAutoPilotAnalysis ? 'bg-slate-950' : 'bg-slate-400'
+                }`}
+              ></span>
+              {isAutoPilotAnalysis ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
           {report && (
             <button
               onClick={downloadJsonReport}

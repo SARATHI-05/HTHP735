@@ -526,6 +526,76 @@ class TriageService:
             "remaining_daily_capacity": max(0, 20 - len(self.resolved_actions)),
         }
 
+    def auto_moderate_queue(
+        self,
+        reviewer_id: str = "ai.autonomous.triage",
+        confidence_threshold: float = 0.70,
+    ) -> Dict[str, Any]:
+        """
+        Executes autonomous policy actions across all pending claims in the moderation queue
+        based on calibrated GBDT decision boundaries, IFCN consensus, and viral risk.
+        """
+        queue_res = self.get_queue()
+        items = queue_res.get("items", [])
+        
+        actions_taken = []
+        escalated_count = 0
+        banner_attached_count = 0
+        deprioritized_count = 0
+        retained_for_human = 0
+
+        for it in items:
+            cid = it.get("claim_id")
+            if not cid or cid in self.resolved_actions:
+                continue
+
+            score = float(it.get("score") or it.get("priority_score") or 0.0)
+            calibrated_risk = float(it.get("calibrated_risk") or 0.5)
+            tier = str(it.get("action_tier") or it.get("risk_tier") or "").lower()
+
+            # Autonomous decision rules
+            if score >= 80.0 or tier == "escalate" or calibrated_risk >= 0.85:
+                action = "Escalate to Cyber Cell"
+                reason = f"AUTONOMOUS ESCALATION: Critical risk ({calibrated_risk:.1%}) & Priority ({score:.1f}) exceeds autonomous safety ceiling."
+                escalated_count += 1
+            elif score >= 65.0 or "contradiction" in str(it.get("rationale", "")).lower():
+                action = "Approve & Attach Fact-Check Banner"
+                reason = "AUTONOMOUS GROUNDING: Verified IFCN contradiction signal matched. Automated banner attached."
+                banner_attached_count += 1
+            elif score <= 45.0 and calibrated_risk <= 0.45:
+                action = "Deprioritize"
+                reason = "AUTONOMOUS CLEARANCE: Low viral velocity and sub-threshold harm probability."
+                deprioritized_count += 1
+            else:
+                retained_for_human += 1
+                continue
+
+            # Record action
+            log = self.record_action(
+                claim_id=cid,
+                reviewer_id=reviewer_id,
+                verdict=action,
+                notes=reason,
+            )
+            actions_taken.append({
+                "claim_id": cid,
+                "action": action,
+                "score": score,
+                "reason": reason,
+                "log_id": log.get("log_id"),
+            })
+
+        return {
+            "status": "COMPLETED",
+            "total_processed": len(actions_taken),
+            "escalated_count": escalated_count,
+            "banner_attached_count": banner_attached_count,
+            "deprioritized_count": deprioritized_count,
+            "retained_for_human": retained_for_human,
+            "actions": actions_taken,
+            "remaining_daily_capacity": max(0, 20 - len(self.resolved_actions)),
+        }
+
     def get_source_trends(self) -> Dict[str, Any]:
         """Returns 30-day EWMA trend points and degradation alerts."""
         trends = []

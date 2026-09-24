@@ -56,3 +56,17 @@ def submit_moderator_verdict(action_req: ModeratorActionRequest, claim_id: Optio
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to record action: {str(e)}")
+
+
+@router.post("/auto-triage")
+@router.post("/auto-moderate")
+def auto_moderate_queue_endpoint():
+    """
+    Executes autonomous GBDT policy triage across all active pending claims in the queue.
+    Automatically assigns escalations, fact-check attachments, and deprioritizations.
+    """
+    try:
+        return triage_service.auto_moderate_queue()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Auto-triage execution failed: {str(e)}")
+

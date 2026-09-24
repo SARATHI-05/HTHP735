@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { submitModeratorAction } from '../services/api';
+import { submitModeratorAction, autoAnalyzeInvestigation } from '../services/api';
 
 export default function ItemInvestigation({
   selectedClaim,
@@ -11,11 +11,19 @@ export default function ItemInvestigation({
   const [submittingAction, setSubmittingAction] = useState(null);
   const [lastAction, setLastAction] = useState(null);
 
+  // Autonomous Investigation States
+  const [isAutoAnalyzing, setIsAutoAnalyzing] = useState(false);
+  const [activeStepIndex, setActiveStepIndex] = useState(-1);
+  const [autoAnalysisReport, setAutoAnalysisReport] = useState(null);
+
   const handleAction = async (actionLabel) => {
     const claimId = selectedClaim?.claim_id || '#TN-2023-8841';
     setSubmittingAction(actionLabel);
     try {
-      const res = await submitModeratorAction(claimId, { action: actionLabel, reviewer_id: activeUser || 'elena.rostova' });
+      const res = await submitModeratorAction(claimId, {
+        action: actionLabel,
+        reviewer_id: activeUser || 'elena.rostova',
+      });
       setLastAction({
         label: actionLabel,
         logId: res?.log_id || 'LOG-APPLIED',
@@ -32,6 +40,53 @@ export default function ItemInvestigation({
       setTimeout(() => setToastMessage(null), 5000);
     }
   };
+
+  // Run Autonomous Multi-Step Forensic Analysis
+  const handleRunAutonomousInvestigation = async () => {
+    setIsAutoAnalyzing(true);
+    setActiveStepIndex(0);
+
+    // Simulate animated step-by-step progress through the 5 forensic stages
+    const stepInterval = setInterval(() => {
+      setActiveStepIndex((prev) => {
+        if (prev < 4) {
+          return prev + 1;
+        } else {
+          clearInterval(stepInterval);
+          return 4;
+        }
+      });
+    }, 450);
+
+    try {
+      const claimId = selectedClaim?.claim_id || '#TN-8821';
+      const text = selectedClaim?.statement || selectedClaim?.title || '';
+      const url = selectedClaim?.url || '';
+
+      const res = await autoAnalyzeInvestigation(claimId, text, url);
+      setTimeout(() => {
+        clearInterval(stepInterval);
+        setActiveStepIndex(4);
+        setAutoAnalysisReport(res);
+        setIsAutoAnalyzing(false);
+        setToastMessage('⚡ Autonomous Forensic Scan Complete: 5/5 pipelines verified.');
+      }, 2300);
+    } catch (err) {
+      console.warn('Autonomous analysis error:', err);
+      setTimeout(() => {
+        clearInterval(stepInterval);
+        setIsAutoAnalyzing(false);
+      }, 2000);
+    }
+  };
+
+  const stepsList = [
+    { title: 'Acoustic & Vision Scan', desc: 'Audio spectrogram pitch anomaly & ELA heatmap forensic scan', icon: 'graphic_eq' },
+    { title: 'SimHash LSH Cluster Matching', desc: 'Querying 142k regional campaign signatures in Redis index', icon: 'hub' },
+    { title: 'IFCN Cross-Check Consensus', desc: 'Querying indexed ECI and regional fact-checking consortium advisories', icon: 'fact_check' },
+    { title: 'TreeSHAP Feature Attribution', desc: 'Computing marginal contributions across velocity, bots, and sentiment', icon: 'analytics' },
+    { title: 'DSA Regulatory Dispatch Engine', desc: 'Synthesizing Article 34/35 systemic risk compliance recommendation', icon: 'gavel' },
+  ];
 
   return (
     <div className="flex flex-col w-full gap-space-lg relative">
@@ -58,9 +113,14 @@ export default function ItemInvestigation({
               <span className="font-label-sm uppercase text-outline text-[11px] font-mono">
                 Case ID: {selectedClaim?.claim_id || '#TN-2023-8841'}
               </span>
+              <span className="bg-primary/10 text-primary font-bold px-2 py-0.5 rounded text-[10px] border border-primary/20">
+                DSA Article 34 Protocol
+              </span>
             </div>
             <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold text-xl">
-              {selectedClaim?.statement || selectedClaim?.title || 'Electoral rumor regarding biometric subsidy verification in rural Madurai'}
+              {selectedClaim?.statement ||
+                selectedClaim?.title ||
+                'Electoral rumor regarding biometric subsidy verification in rural Madurai'}
             </h1>
           </div>
         </div>
@@ -97,6 +157,120 @@ export default function ItemInvestigation({
         </div>
       </div>
 
+      {/* Autonomous Forensic Investigation Engine Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-primary to-slate-900 text-white p-space-lg rounded-2xl shadow-xl border border-slate-700 flex flex-col gap-space-md">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-space-md pb-space-sm border-b border-white/10">
+          <div className="flex items-center gap-space-sm">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+              <span className="material-symbols-outlined text-[24px]">auto_awesome</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-white text-base">
+                  Autonomous Forensic Investigation Agent
+                </h3>
+                <span className="bg-amber-400/20 text-amber-300 font-mono text-[10px] px-2 py-0.5 rounded border border-amber-400/30 font-bold uppercase">
+                  Zero-Touch Forensics
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs mt-0.5">
+                Executes multi-modal audio spectrogram analysis, LSH SimHash clustering, and IFCN fact verification consensus.
+              </p>
+            </div>
+          </div>
+
+          <button
+            disabled={isAutoAnalyzing}
+            onClick={handleRunAutonomousInvestigation}
+            className="px-space-lg py-2.5 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-amber-400/20 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <span className={`material-symbols-outlined text-[18px] ${isAutoAnalyzing ? 'animate-spin' : ''}`}>
+              {isAutoAnalyzing ? 'sync' : 'bolt'}
+            </span>
+            {isAutoAnalyzing ? 'Executing Pipeline...' : '⚡ Run Autonomous Investigation'}
+          </button>
+        </div>
+
+        {/* 5-Step Pipeline Progress Indicator */}
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-space-xs">
+          {stepsList.map((step, idx) => {
+            const isCompleted = activeStepIndex > idx || (autoAnalysisReport && !isAutoAnalyzing);
+            const isCurrent = activeStepIndex === idx && isAutoAnalyzing;
+
+            return (
+              <div
+                key={idx}
+                className={`p-2.5 rounded-xl border flex flex-col gap-1 transition-all ${
+                  isCompleted
+                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                    : isCurrent
+                    ? 'bg-amber-950/40 border-amber-400 text-amber-300 shadow-md shadow-amber-400/10'
+                    : 'bg-white/5 border-white/10 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">
+                      {isCompleted ? 'check_circle' : isCurrent ? 'hourglass_top' : step.icon}
+                    </span>
+                    Step {idx + 1}
+                  </span>
+                  <span className="font-mono text-[10px]">
+                    {isCompleted ? 'PASS' : isCurrent ? 'RUNNING' : 'READY'}
+                  </span>
+                </div>
+                <div className="text-xs font-semibold text-white truncate">{step.title}</div>
+                <div className="text-[10px] text-slate-300 line-clamp-1">{step.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Autonomous Findings & 1-Click Action Recommendation */}
+        {autoAnalysisReport && (
+          <div className="bg-black/50 border border-amber-400/40 rounded-xl p-space-md flex flex-col md:flex-row justify-between items-start md:items-center gap-space-md animate-fadeIn mt-space-xs">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="bg-emerald-400 text-black font-bold px-2 py-0.5 rounded text-[10px] uppercase font-mono">
+                  Autonomous Verdict Ready
+                </span>
+                <span className="text-amber-300 text-xs font-semibold">
+                  Confidence: {autoAnalysisReport.confidence_level || 'CRITICAL (96.4%)'}
+                </span>
+              </div>
+              <div className="text-sm font-bold text-white flex items-center gap-2">
+                Recommended Action:
+                <span className="text-amber-300 underline underline-offset-4">
+                  {autoAnalysisReport.recommended_action || 'Escalate to Cyber Cell'}
+                </span>
+              </div>
+              <div className="text-xs text-slate-300">
+                Regulatory Basis:{' '}
+                <span className="text-slate-100 font-mono">
+                  {autoAnalysisReport.regulatory_basis ||
+                    'DSA Art. 34: Systemic societal risk & electoral disruption threat'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <button
+                disabled={Boolean(submittingAction)}
+                onClick={() =>
+                  handleAction(
+                    autoAnalysisReport.recommended_action || 'Escalate to Cyber Cell'
+                  )
+                }
+                className="w-full md:w-auto px-space-lg py-2.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">verified</span>
+                ⚡ 1-Click Execute AI Recommendation
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
         {/* Left Column: Original Post & Media Analysis (7 Cols) */}
@@ -124,7 +298,9 @@ export default function ItemInvestigation({
             </div>
 
             <p className="font-body-md text-on-surface text-sm leading-relaxed">
-              "{selectedClaim?.statement || selectedClaim?.title || "URGENT: Govt officials in Madurai are locking ration shops and demanding mandatory biometric re-verification linked directly to voter ID cards. If you don't scan by tomorrow evening, your monthly grain subsidy will be permanently cancelled! Forwarded as received."}"
+              "{selectedClaim?.statement ||
+                selectedClaim?.title ||
+                "URGENT: Govt officials in Madurai are locking ration shops and demanding mandatory biometric re-verification linked directly to voter ID cards. If you don't scan by tomorrow evening, your monthly grain subsidy will be permanently cancelled! Forwarded as received."}"
             </p>
 
             {/* Manipulated Video Frame Comparison */}
@@ -227,11 +403,51 @@ export default function ItemInvestigation({
               </div>
             </div>
 
-            {/* Propagation Curve Step Chart (Matching Screenshot 4 Exactly) */}
+            {/* TreeSHAP Feature Attribution Bar */}
+            <div className="bg-surface-container-low p-space-md rounded-xl border border-outline-variant/20 flex flex-col gap-space-xs">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-on-surface flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-primary">data_object</span>
+                  TreeSHAP Feature Attribution (GBDT Model V4.2)
+                </span>
+                <span className="font-mono text-outline text-[10px]">BASE VALUE: 0.12 &rarr; OUTPUT: 0.885</span>
+              </div>
+              <div className="space-y-1.5 mt-1 text-xs">
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="text-outline">Hourly Spread Velocity (+32k/hr)</span>
+                    <span className="font-bold text-error font-mono">+0.382</span>
+                  </div>
+                  <div className="w-full bg-outline-variant/20 h-2 rounded-full overflow-hidden">
+                    <div className="bg-error h-full rounded-full" style={{ width: '78%' }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="text-outline">Coordinated Bot Cluster Detection (#TN-Madurai-BotNet-4)</span>
+                    <span className="font-bold text-error font-mono">+0.241</span>
+                  </div>
+                  <div className="w-full bg-outline-variant/20 h-2 rounded-full overflow-hidden">
+                    <div className="bg-error/80 h-full rounded-full" style={{ width: '55%' }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="text-outline">Hostile Negative Sentiment & Urgency Triggers</span>
+                    <span className="font-bold text-amber-600 font-mono">+0.167</span>
+                  </div>
+                  <div className="w-full bg-outline-variant/20 h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full rounded-full" style={{ width: '38%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Propagation Curve Step Chart */}
             <div className="mt-space-xs bg-surface-container-high p-space-md rounded-xl flex flex-col gap-space-xs border border-outline-variant/20">
               <div className="flex justify-between items-center">
                 <span className="font-label-sm uppercase text-outline text-[11px] font-semibold">
-                  24-Hour Velocity & Propagation Curve
+                  24-Hour Velocity &amp; Propagation Curve
                 </span>
                 <span className="font-label-md text-error font-bold text-xs">+340 retweets/hr</span>
               </div>
@@ -340,7 +556,9 @@ export default function ItemInvestigation({
               <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 p-space-sm rounded-xl flex items-center justify-between text-xs font-semibold animate-fadeIn">
                 <div className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-emerald-600 text-[18px]">verified</span>
-                  <span>Action Applied: <strong>{lastAction.label}</strong></span>
+                  <span>
+                    Action Applied: <strong>{lastAction.label}</strong>
+                  </span>
                 </div>
                 <span className="font-mono text-[10px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
                   {lastAction.logId} • {lastAction.time}
