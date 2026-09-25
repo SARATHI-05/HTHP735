@@ -46,4 +46,5 @@ data/audit_log.jsonl
 *.log
 scratch/
 temp_test_assets/
+phase_*.png
 

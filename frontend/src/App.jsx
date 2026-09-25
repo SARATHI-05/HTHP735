@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import TriageDashboard from './components/TriageDashboard';
-import ModerationQueue from './components/ModerationQueue';
-import ItemInvestigation from './components/ItemInvestigation';
+import TopBar from './components/TopBar';
+import KpiStrip from './components/KpiStrip';
+import TabNav from './components/TabNav';
+import QueueSplitView from './components/QueueSplitView';
 import SourceCredibility from './components/SourceCredibility';
-import TabAudit from './components/TabAudit';
+import TabMethodLimits from './components/TabMethodLimits';
 import TabMultimodalInvestigation from './components/TabMultimodalInvestigation';
+import TriageDashboard from './components/TriageDashboard';
+import DemoWalkthrough from './components/DemoWalkthrough';
 import { fetchQueue } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [activeUser, setActiveUser] = useState('elena.rostova');
+  const [activeTab, setActiveTab] = useState('queue');
+  const [day, setDay] = useState(30);
   const [capacity, setCapacity] = useState(20);
   const [queueData, setQueueData] = useState(null);
-  const [selectedClaimId, setSelectedClaimId] = useState(null);
+  const [selectedClaimId, setSelectedClaimId] = useState('CLM-5017');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // 30-Second Guided Tour for Judges State
+  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(1);
 
   const [customClaim, setCustomClaim] = useState(null);
   const [isReachHidden, setIsReachHidden] = useState(() => {
@@ -31,19 +36,36 @@ export default function App() {
     });
   };
 
-  // Load queue data
+  const handleOpenWalkthrough = () => {
+    setActiveTab('queue');
+    setWalkthroughStep(1);
+    setIsWalkthroughOpen(true);
+  };
+
+  // Load queue data dynamically whenever capacity or day changes
   useEffect(() => {
+    let isCancelled = false;
     async function loadData() {
       setLoading(true);
-      const data = await fetchQueue({ capacity });
-      setQueueData(data);
-      if (!selectedClaimId && data?.items?.length > 0) {
-        setSelectedClaimId(data.items[0].claim_id);
+      try {
+        const data = await fetchQueue({ capacity, day });
+        if (!isCancelled) {
+          setQueueData(data);
+          if (data?.items?.length > 0 && !selectedClaimId) {
+            setSelectedClaimId(data.items[0].claim_id);
+          }
+        }
+      } catch (err) {
+        console.warn('Queue fetch error:', err);
+      } finally {
+        if (!isCancelled) setLoading(false);
       }
-      setLoading(false);
     }
     loadData();
-  }, [capacity]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [capacity, day]);
 
   const handleSelectClaim = (claimIdOrClaim) => {
     if (typeof claimIdOrClaim === 'object' && claimIdOrClaim !== null) {
@@ -53,7 +75,6 @@ export default function App() {
       setCustomClaim(null);
       setSelectedClaimId(claimIdOrClaim);
     }
-    setActiveTab('investigation');
   };
 
   const handleActionComplete = (claimId, verdict) => {
@@ -70,124 +91,101 @@ export default function App() {
     }
   };
 
-  const handleQuickSearch = (query) => {
-    setActiveTab('queue');
-  };
-
-  const selectedClaim =
-    customClaim ||
-    queueData?.items?.find((it) => it.claim_id === selectedClaimId) ||
-    queueData?.items?.[0] ||
-    null;
-
   return (
-    <div className="min-h-screen bg-surface font-body-md text-on-surface antialiased">
-      {/* Enterprise Fixed Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased flex flex-col">
+      {/* 1. Global Top Bar */}
+      <TopBar
+        day={day}
+        setDay={setDay}
         capacity={capacity}
         setCapacity={setCapacity}
-        queueCount={queueData?.items?.length || 14}
-        reviewedCount={queueData?.reviewed_count || 14}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        isReachHidden={isReachHidden}
+        toggleHideReach={toggleHideReach}
+        onOpenWalkthrough={handleOpenWalkthrough}
+        onResetDemo={() => {
+          setActiveTab('queue');
+          setSelectedClaimId('CLM-5017');
+          setCapacity(20);
+        }}
       />
 
-      {/* Main Content Area (Offset by Sidebar 64 = 16rem) */}
-      <div className="pl-64">
-        {/* Fixed Header */}
-        <Header
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          activeUser={activeUser}
-          setActiveUser={setActiveUser}
-          onQuickSearch={handleQuickSearch}
-          isReachHidden={isReachHidden}
-          toggleHideReach={toggleHideReach}
+      {/* Main Moderator Console Shell */}
+      <main className="flex-1 w-full max-w-[1600px] mx-auto p-3 sm:p-5 lg:p-7 flex flex-col gap-4 sm:gap-5">
+        {/* 2. KPI Strip (4 Cards: Items Today, Capacity Used, Escalations, Backlog) */}
+        <KpiStrip queueData={queueData} capacity={capacity} />
+
+        {/* 4. Tab Navigation Beside the Queue */}
+        <TabNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          queueCount={queueData?.items?.length || 14}
         />
 
-        {/* Dynamic Screen Content */}
-        <main className="relative pt-16 bg-surface min-h-screen">
-          <div className="flex flex-col w-full p-space-lg gap-space-xl max-w-7xl mx-auto">
-            {/* Screen 1: Dashboard */}
-            {activeTab === 'dashboard' && (
-              <TriageDashboard
-                onSelectClaim={handleSelectClaim}
-                onNavigateToQueue={() => setActiveTab('queue')}
-                isReachHidden={isReachHidden}
-              />
-            )}
+        {/* Dynamic Tab Body */}
+        {activeTab === 'queue' && (
+          <QueueSplitView
+            queueData={queueData}
+            capacity={capacity}
+            day={day}
+            selectedClaimId={selectedClaimId}
+            onSelectClaim={handleSelectClaim}
+            onActionComplete={handleActionComplete}
+            isReachHidden={isReachHidden}
+            toggleHideReach={toggleHideReach}
+            onNavigateToLab={() => setActiveTab('multimodal')}
+            onOpenWalkthrough={handleOpenWalkthrough}
+          />
+        )}
 
-            {/* Screen 2: Prioritized Moderation Queue */}
-            {activeTab === 'queue' && (
-              <ModerationQueue
-                queueData={queueData}
-                capacity={capacity}
-                onSelectClaim={handleSelectClaim}
-                selectedClaimId={selectedClaimId}
-                onActionComplete={handleActionComplete}
-                isReachHidden={isReachHidden}
-                toggleHideReach={toggleHideReach}
-              />
-            )}
-
-            {/* Screen 3: Item Investigation & NLP Breakdown */}
-            {activeTab === 'investigation' && (
-              <ItemInvestigation
-                selectedClaim={selectedClaim}
-                activeUser={activeUser}
-                onActionComplete={handleActionComplete}
-                onBackToQueue={() => setActiveTab('queue')}
-                onNavigateToLab={() => setActiveTab('multimodal')}
-                isReachHidden={isReachHidden}
-                toggleHideReach={toggleHideReach}
-              />
-            )}
-
-            {/* Screen 3b: Real-World Multimodal Forensics Lab (Audio/Image/Video/Chain/News) */}
-            {activeTab === 'multimodal' && (
-              <TabMultimodalInvestigation
-                onSelectClaim={handleSelectClaim}
-                onNavigateToQueue={() => setActiveTab('queue')}
-                isReachHidden={isReachHidden}
-                toggleHideReach={toggleHideReach}
-              />
-            )}
-
-            {/* Screen 4: Source Credibility & Trend Tracking */}
-            {activeTab === 'sources' && (
-              <SourceCredibility />
-            )}
-
-            {/* Screen 5: Quantitative Audit & DSA Compliance */}
-            {activeTab === 'audit' && (
-              <TabAudit />
-            )}
-
-            {/* Screen 6: System & Model Settings */}
-            {activeTab === 'settings' && (
-              <div className="bg-surface-container-lowest border border-outline-variant/30 p-space-xl rounded-xl shadow-xs">
-                <div className="flex items-center gap-space-sm mb-space-md">
-                  <span className="material-symbols-outlined text-primary text-[24px]">settings</span>
-                  <h2 className="text-headline-lg font-bold text-on-surface text-xl">Platform &amp; Model Settings</h2>
-                </div>
-                <p className="text-body-sm text-outline text-xs mb-space-lg">
-                  Configure regional surveillance thresholds, GBDT decision boundaries, and automated webhook triggers.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md text-xs">
-                  <div className="p-space-md bg-surface-container-low rounded-xl border border-outline-variant/20">
-                    <span className="font-bold text-on-surface block mb-1">Active Model Checkpoint</span>
-                    <span className="text-outline font-mono">gbdt-calibrated-v1.4.0 (Tamil Nadu Custom)</span>
-                  </div>
-                  <div className="p-space-md bg-surface-container-low rounded-xl border border-outline-variant/20">
-                    <span className="font-bold text-on-surface block mb-1">State Cyber Cell Webhook</span>
-                    <span className="text-emerald-600 font-mono font-semibold">ONLINE • Latency: 14ms</span>
-                  </div>
-                </div>
-              </div>
-            )}
+        {activeTab === 'sources' && (
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+            <SourceCredibility />
           </div>
-        </main>
-      </div>
+        )}
+
+        {activeTab === 'method' && (
+          <TabMethodLimits />
+        )}
+
+        {activeTab === 'multimodal' && (
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+            <TabMultimodalInvestigation
+              onSelectClaim={(claim) => {
+                handleSelectClaim(claim);
+                setActiveTab('queue');
+              }}
+              onNavigateToQueue={() => setActiveTab('queue')}
+              isReachHidden={isReachHidden}
+              toggleHideReach={toggleHideReach}
+            />
+          </div>
+        )}
+
+        {activeTab === 'overview' && (
+          <TriageDashboard
+            onSelectClaim={(claimId) => {
+              handleSelectClaim(claimId);
+              setActiveTab('queue');
+            }}
+            onNavigateToQueue={() => setActiveTab('queue')}
+            isReachHidden={isReachHidden}
+          />
+        )}
+      </main>
+
+      {/* 30-Second Guided Tour Modal for Judges */}
+      <DemoWalkthrough
+        isOpen={isWalkthroughOpen}
+        onClose={() => setIsWalkthroughOpen(false)}
+        currentStep={walkthroughStep}
+        setCurrentStep={setWalkthroughStep}
+        onSelectClaim={handleSelectClaim}
+        setCapacity={setCapacity}
+        capacity={capacity}
+        items={queueData?.items || []}
+      />
     </div>
   );
 }

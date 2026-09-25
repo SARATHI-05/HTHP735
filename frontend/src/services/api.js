@@ -27,7 +27,7 @@ export async function fetchQueue(params = {}) {
     return await res.json();
   } catch (err) {
     console.warn('API unavailable, using fallback queue data', err);
-    return getFallbackQueue();
+    return getFallbackQueue(params);
   }
 }
 
@@ -229,136 +229,421 @@ function getFallbackOverview() {
   };
 }
 
-function getFallbackQueue() {
+const FALLBACK_CLAIMS_DATABASE = [
+  {
+    rank: 1,
+    claim_id: "#TN-8821",
+    score: 94.2,
+    statement: "Fake WhatsApp forward claiming drinking water supply in Chennai is contaminated with heavy metals.",
+    district: "Chennai",
+    regional_source: "Local WhatsApp Group",
+    language: "Tamil",
+    nlp_confidence: 98.4,
+    calibrated_risk: 0.942,
+    estimated_reach: 245000,
+    reach_velocity: "+32K/hr",
+    risk_tier: "High Risk (>80)",
+    priority_score: 1.940,
+    harm_topic_weight: 1.5,
+    subject: "health",
+    status: "Pending",
+    speaker: "Local WhatsApp Group",
+    author_handle: "@chennai_community_fwd",
+    posted_time: "18 mins ago via WhatsApp Forward",
+    action_reason: "Critical risk (94.2%) x viral metropolitan reach (245,000) [Harm weight 1.5x]",
+    why_ranked: "Ranked #1: Immediate public safety hazard regarding municipal water reservoirs combined with viral reach across 18 forward nodes.",
+    plain_english_rationale: "94.2% likely misleading. Direct contradiction with official Tamil Nadu Water Supply & Drainage Board (TWAD) lab reports confirming potable reservoir water quality.",
+    shap_groups: { language: 0.28, source: 0.35, consistency: 0.34, text: 0.12 },
+    retrieved_evidence: [
+      {
+        authority: "Tamil Nadu Water Supply & Drainage Board (TWAD)",
+        reference_id: "TWAD-ADVISORY-2024-88",
+        snippet: "Official Circular: Water supplied from Red Hills & Chembarambakkam reservoirs undergoes continuous tri-level filtration. Water quality indices are optimal; viral panic forwards are completely false.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.962,
+      },
+    ],
+  },
+  {
+    rank: 2,
+    claim_id: "#TN-7734",
+    score: 88.5,
+    statement: "Altered video showing police confrontation at Madurai political gathering.",
+    district: "Madurai",
+    regional_source: "Social Channel (X)",
+    language: "Tamil",
+    nlp_confidence: 92.1,
+    calibrated_risk: 0.885,
+    estimated_reach: 180000,
+    reach_velocity: "+24K/hr",
+    risk_tier: "High Risk (>80)",
+    priority_score: 1.720,
+    harm_topic_weight: 1.5,
+    subject: "elections",
+    status: "Pending",
+    speaker: "@MaduraiVoice_247",
+    author_handle: "@MaduraiVoice_247",
+    posted_time: "42 mins ago via Mobile Client",
+    action_reason: "High risk (88.5%) x viral regional reach in Madurai South [Harm weight 1.5x]",
+    why_ranked: "Ranked #2: Severe public order risk with viral social spread across high-influence political networks.",
+    plain_english_rationale: "88.5% likely misleading. Audiovisual forensic spectrogram matches doctored audio overlay superimposed onto archival crowd footage from 2021.",
+    shap_groups: { language: 0.31, source: 0.29, consistency: 0.32, text: 0.14 },
+    retrieved_evidence: [
+      {
+        authority: "Madurai District Police Commissionerate",
+        reference_id: "MDU-CYBER-PRESS-409",
+        snippet: "Advisory: Video circulating on social media depicting police conflict is digitally spliced from an older assembly in 2021. Legal notices served under IT Act.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.941,
+      },
+    ],
+  },
+  {
+    rank: 3,
+    claim_id: "CLM-5017",
+    score: 68.7,
+    statement: "False agricultural loan waiver broadcast spreading rapidly across rural farming communities.",
+    district: "Coimbatore",
+    regional_source: "Public X / Twitter Feed",
+    language: "Tamil",
+    nlp_confidence: 88.0,
+    calibrated_risk: 0.687,
+    estimated_reach: 220000,
+    reach_velocity: "+18K/hr",
+    risk_tier: "Medium Risk (50-80)",
+    priority_score: 1.410,
+    harm_topic_weight: 1.2,
+    subject: "economy",
+    status: "Pending",
+    speaker: "coimbatore-voice",
+    author_handle: "@coimbatore_voice",
+    posted_time: "1 hr ago via Web Client",
+    action_reason: "Harm-weighted priority: viral reach (220,000) elevates 68.7% risk claim into top review quota.",
+    why_ranked: "Ranked #3: High viral reach (220,000 users) elevates this moderate-risk claim above higher-probability claims with negligible audience (Outranking Paradox).",
+    plain_english_rationale: "68.7% likely misleading. Direct contradiction with official Tamil Nadu Cooperative Bank credit policy bulletins; false scheme details spreading widely.",
+    shap_groups: { language: 0.24, source: 0.32, consistency: 0.28, text: 0.16 },
+    retrieved_evidence: [
+      {
+        authority: "Tamil Nadu Department of Agriculture & Farmers Welfare",
+        reference_id: "AGRI-COOP-TN-501",
+        snippet: "Notification: No universal loan waiver notification has been issued by the State Treasury. Farmers are advised to consult designated cooperative banks directly.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.912,
+      },
+    ],
+  },
+  {
+    rank: 4,
+    claim_id: "#TN-5421",
+    score: 68.4,
+    statement: "Unverified panic rumors claiming lockdown of local ration shops in Salem district.",
+    district: "Salem",
+    regional_source: "Local WhatsApp Forward",
+    language: "Tamil",
+    nlp_confidence: 79.2,
+    calibrated_risk: 0.684,
+    estimated_reach: 62000,
+    reach_velocity: "+2K/hr",
+    risk_tier: "Medium Risk (50-80)",
+    priority_score: 1.250,
+    harm_topic_weight: 1.2,
+    subject: "civic",
+    status: "Pending",
+    speaker: "Local WhatsApp Forward",
+    author_handle: "@salem_forward_hub",
+    posted_time: "2 hrs ago",
+    action_reason: "Harm-weighted priority: moderate reach with high civic disruption potential.",
+    why_ranked: "Ranked #4: Essential food supply panic targeting working-class beneficiaries across Salem municipality.",
+    plain_english_rationale: "68.4% likely misleading. Civil supplies department verified normal operational hours across all 42 Fair Price shops.",
+    shap_groups: { language: 0.22, source: 0.28, consistency: 0.30, text: 0.14 },
+    retrieved_evidence: [
+      {
+        authority: "Civil Supplies & Consumer Protection Dept, Salem",
+        reference_id: "CSCP-SLM-2024",
+        snippet: "Official Bulletin: All Fair Price ration shops operate on normal schedule from 9 AM to 6 PM. Distribution of grain and oil is fully uninterrupted.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.895,
+      },
+    ],
+  },
+  {
+    rank: 5,
+    claim_id: "#TN-4112",
+    score: 42.0,
+    statement: "Outdated weather alert from 2021 reshared claiming imminent dam overflow in Trichy.",
+    district: "Trichy",
+    regional_source: "Facebook Group",
+    language: "English",
+    nlp_confidence: 95.0,
+    calibrated_risk: 0.420,
+    estimated_reach: 18000,
+    reach_velocity: "+100/hr",
+    risk_tier: "Low Risk (<50)",
+    priority_score: 0.620,
+    harm_topic_weight: 1.0,
+    subject: "disaster",
+    status: "Pending",
+    speaker: "Facebook Group",
+    author_handle: "@trichy_updates_fb",
+    posted_time: "3 hrs ago",
+    action_reason: "Sub-threshold priority: archival imagery circulating without temporal context.",
+    why_ranked: "Ranked #5: Low viral velocity and low calibrated risk place this in waitlist/monitoring status.",
+    plain_english_rationale: "42.0% risk. Water levels in Mukkombu barrage are within safe limits; post recirculates 2021 flood advisory.",
+    shap_groups: { language: 0.14, source: 0.18, consistency: 0.22, text: 0.10 },
+    retrieved_evidence: [
+      {
+        authority: "Water Resources Department (WRD), Trichy Region",
+        reference_id: "WRD-TRICHY-GAUGE",
+        snippet: "Reservoir Inflow Bulletin: Upper Anicut reservoir storage is at 44% capacity. No flood alerts or emergency discharge planned.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.870,
+      },
+    ],
+  },
+  {
+    rank: 6,
+    claim_id: "CLM-10223",
+    score: 98.0,
+    statement: "Local municipal council flyer alleging sudden cancellation of senior citizen voter IDs in ward 14.",
+    district: "Madurai",
+    regional_source: "Ward Printed Flyer Scan",
+    language: "Tamil",
+    nlp_confidence: 99.1,
+    calibrated_risk: 0.980,
+    estimated_reach: 521,
+    reach_velocity: "+5/hr",
+    risk_tier: "High Risk (>80)",
+    priority_score: 0.532,
+    harm_topic_weight: 1.5,
+    subject: "elections",
+    status: "Pending",
+    speaker: "independent-leaflet",
+    author_handle: "@ward14_activist",
+    posted_time: "4 hrs ago",
+    action_reason: "Very high probability (98.0%) but isolated reach (521 views); deferred to Waitlist backlog under capacity limits.",
+    why_ranked: "Ranked #6: Demonstrates the Outranking Paradox — despite 98.0% misleading probability, its tiny reach (521) generates a 0.532 priority score, safely deferred below viral claims.",
+    plain_english_rationale: "98.0% misleading. Explicit disinformation targeting municipal ward voters; negligible audience propagation contained within ward leaflet.",
+    shap_groups: { language: 0.35, source: 0.38, consistency: 0.40, text: 0.12 },
+    retrieved_evidence: [
+      {
+        authority: "Election Commission of India (ECI) State Office",
+        reference_id: "ECI-TN-ELECT-2024",
+        snippet: "Clarification: No voter ID deletions or cancellations have been enacted. All senior citizens on the electoral roll remain fully eligible.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.988,
+      },
+    ],
+  },
+  {
+    rank: 7,
+    claim_id: "#TN-3918",
+    score: 73.5,
+    statement: "Viral SMS claiming sudden 40% toll tax hike on all State Highways from midnight.",
+    district: "Tirunelveli",
+    regional_source: "SMS Broadcast",
+    language: "Tamil",
+    nlp_confidence: 86.4,
+    calibrated_risk: 0.735,
+    estimated_reach: 45000,
+    reach_velocity: "+6K/hr",
+    risk_tier: "Medium Risk (50-80)",
+    priority_score: 1.120,
+    harm_topic_weight: 1.2,
+    subject: "economy",
+    status: "Pending",
+    speaker: "SMS Broadcast Hub",
+    author_handle: "@sms_state_alerts",
+    posted_time: "5 hrs ago",
+    action_reason: "Elevated risk with moderate audience propagation across transport corridors.",
+    why_ranked: "Ranked #7: Commercial transit panic; verified false through State Highways Department gazette.",
+    plain_english_rationale: "73.5% likely misleading. Official gazette confirms toll revisions occur solely via annual April statutory notifications.",
+    shap_groups: { language: 0.20, source: 0.26, consistency: 0.27, text: 0.15 },
+    retrieved_evidence: [
+      {
+        authority: "Tamil Nadu Highways & Minor Ports Department",
+        reference_id: "TNH-TOLL-REG-2024",
+        snippet: "Circular: Reports of immediate toll rate increases are completely false. Rates are fixed strictly by statutory fee rules.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.925,
+      },
+    ],
+  },
+  {
+    rank: 8,
+    claim_id: "#TN-2419",
+    score: 55.4,
+    statement: "Fake recruitment notice alleging 12,000 direct state transport bus conductor vacancies.",
+    district: "Erode",
+    regional_source: "Telegram Channel",
+    language: "Tamil",
+    nlp_confidence: 82.0,
+    calibrated_risk: 0.554,
+    estimated_reach: 32000,
+    reach_velocity: "+3K/hr",
+    risk_tier: "Medium Risk (50-80)",
+    priority_score: 0.840,
+    harm_topic_weight: 1.0,
+    subject: "civic",
+    status: "Pending",
+    speaker: "Telegram Channel",
+    author_handle: "@tn_govt_jobs_unofficial",
+    posted_time: "6 hrs ago",
+    action_reason: "Moderate priority: job seeker scam targeting youth.",
+    why_ranked: "Ranked #8: Advance-fee fraud vector targeting unemployed youth.",
+    plain_english_rationale: "55.4% likely misleading. Tamil Nadu State Transport Corporation (TNSTC) confirmed no such notification exists.",
+    shap_groups: { language: 0.18, source: 0.22, consistency: 0.25, text: 0.12 },
+    retrieved_evidence: [
+      {
+        authority: "Tamil Nadu State Transport Corporation (TNSTC)",
+        reference_id: "TNSTC-RECRUIT-ALERT",
+        snippet: "Advisory: Official recruitment notices are published exclusively on tnstc.ac.in. Third-party payment links are fraudulent.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.910,
+      },
+    ],
+  },
+  {
+    rank: 9,
+    claim_id: "#TN-1892",
+    score: 81.2,
+    statement: "Doctored audio note claiming regional hospital ICU ward oxygen shortage in Coimbatore.",
+    district: "Coimbatore",
+    regional_source: "WhatsApp Audio",
+    language: "Tamil",
+    nlp_confidence: 91.5,
+    calibrated_risk: 0.812,
+    estimated_reach: 28000,
+    reach_velocity: "+4K/hr",
+    risk_tier: "High Risk (>80)",
+    priority_score: 1.050,
+    harm_topic_weight: 1.5,
+    subject: "health",
+    status: "Pending",
+    speaker: "WhatsApp Audio Forward",
+    author_handle: "@coimbatore_local_voice",
+    posted_time: "7 hrs ago",
+    action_reason: "High risk health rumor with active forward momentum.",
+    why_ranked: "Ranked #9: Critical medical rumor refuted directly by Coimbatore Medical College Hospital dean.",
+    plain_english_rationale: "81.2% likely misleading. Liquid medical oxygen buffer tanks are verified at 94% storage capacity.",
+    shap_groups: { language: 0.28, source: 0.29, consistency: 0.31, text: 0.13 },
+    retrieved_evidence: [
+      {
+        authority: "Coimbatore Medical College Hospital (CMCH)",
+        reference_id: "CMCH-MED-OXY-24",
+        snippet: "Press Release: The hospital holds 20,000 liters of liquid oxygen in reserve. Audio claiming shortages is mischievous and false.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.955,
+      },
+    ],
+  },
+  {
+    rank: 10,
+    claim_id: "#TN-1044",
+    score: 38.0,
+    statement: "Old flood footage from 2018 reshared alleging current cyclone inundation in Thanjavur.",
+    district: "Thanjavur",
+    regional_source: "Facebook Page",
+    language: "Tamil",
+    nlp_confidence: 89.0,
+    calibrated_risk: 0.380,
+    estimated_reach: 12000,
+    reach_velocity: "+50/hr",
+    risk_tier: "Low Risk (<50)",
+    priority_score: 0.420,
+    harm_topic_weight: 1.0,
+    subject: "disaster",
+    status: "Pending",
+    speaker: "Facebook Page",
+    author_handle: "@delta_weather_watch",
+    posted_time: "8 hrs ago",
+    action_reason: "Low priority: archival clip with low spreading velocity.",
+    why_ranked: "Ranked #10: Recirculated historical visual without active weather threat.",
+    plain_english_rationale: "38.0% risk. IMD reports clear skies over Cauvery delta; reverse image lookup confirms 2018 Cyclone Gaja footage.",
+    shap_groups: { language: 0.12, source: 0.15, consistency: 0.18, text: 0.10 },
+    retrieved_evidence: [
+      {
+        authority: "India Meteorological Department (IMD) Chennai Center",
+        reference_id: "IMD-CHENNAI-BULLETIN",
+        snippet: "Daily Weather Summary: Cauvery delta districts experience dry weather. No rainfall or cyclonic activity registered.",
+        nli_label: "CONTRADICTION",
+        nli_contradiction_score: 0.880,
+      },
+    ],
+  },
+];
+
+function getFallbackQueue(params = {}) {
+  const cap = parseInt(params.capacity, 10) || 20;
+  const filterTier = params.actionTier || 'All';
+  const filterSub = params.subject || 'All';
+  const query = (params.q || '').toLowerCase().trim();
+
+  // Partition actions dynamically based on capacity quota
+  const processed = FALLBACK_CLAIMS_DATABASE.map((item, idx) => {
+    const isWithinCapacity = item.rank <= cap;
+    let action_tier = 'Review';
+    let action_reason = item.action_reason;
+
+    if (item.score >= 80.0 && item.estimated_reach >= 100000) {
+      action_tier = 'Escalate';
+    } else if (isWithinCapacity) {
+      action_tier = 'Review';
+    } else if (item.score >= 50.0) {
+      action_tier = 'Waitlist';
+      action_reason = `Waitlisted: Rank #${item.rank} exceeds daily review capacity (K=${cap}). Deferred to backlog with aging boost.`;
+    } else {
+      action_tier = 'Deprioritize';
+      action_reason = `Deprioritized: Low priority score (${item.priority_score.toFixed(3)}) below operational triage threshold.`;
+    }
+
+    return {
+      ...item,
+      action_tier,
+      action_reason,
+    };
+  });
+
+  const filtered = processed.filter((it) => {
+    if (filterTier !== 'All' && it.action_tier.toLowerCase() !== filterTier.toLowerCase()) return false;
+    if (filterSub !== 'All' && !it.subject.toLowerCase().includes(filterSub.toLowerCase())) return false;
+    if (query) {
+      const match =
+        it.statement.toLowerCase().includes(query) ||
+        it.claim_id.toLowerCase().includes(query) ||
+        it.district.toLowerCase().includes(query) ||
+        it.speaker.toLowerCase().includes(query);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  const reviewedCount = Math.min(cap, filtered.filter((i) => i.action_tier === 'Review' || i.action_tier === 'Escalate').length);
+  const escalatedCount = filtered.filter((i) => i.action_tier === 'Escalate').length;
+
   return {
     total_ingested_claims: 128,
-    daily_capacity_limit: 20,
-    capacity_utilization_pct: 70.0,
+    daily_capacity_limit: cap,
+    capacity_utilization_pct: Math.min(100, Math.round((reviewedCount / cap) * 100)),
     estimated_harm_mitigated_pct: 87.8,
-    escalated_count: 4,
-    reviewed_count: 14,
-    pending_count: 6,
-    items: [
-      {
-        rank: 1,
-        claim_id: "CLM-8821",
-        score: 94.2,
-        statement: "Fake WhatsApp forward claiming drinking water supply in Chennai is contaminated with heavy metals.",
-        district: "Chennai",
-        regional_source: "Local WhatsApp Group",
-        language: "Tamil",
-        nlp_confidence: 98.4,
-        estimated_reach: 245000,
-        reach_velocity: "+32K/hr",
-        risk_tier: "High Risk (>80)",
-        priority_score: 1.94,
-        action_tier: "Escalate",
-        action_reason: "Critical risk (94%) x viral reach (245,000 users) [harm weight 1.5]",
-        status: "Pending",
-        speaker: "chennai-rumor-forward",
-        subject: "health",
-      },
-      {
-        rank: 2,
-        claim_id: "CLM-8841",
-        score: 91.5,
-        statement: "Govt officials in Madurai are locking ration shops and demanding biometric rescan linked to voter ID.",
-        district: "Madurai",
-        regional_source: "Telegram Broadcast Node",
-        language: "Tamil",
-        nlp_confidence: 94.2,
-        estimated_reach: 180000,
-        reach_velocity: "+24K/hr",
-        risk_tier: "High Risk (>80)",
-        priority_score: 1.72,
-        action_tier: "Review",
-        action_reason: "High risk (91.5%) x viral regional reach in Madurai South",
-        status: "Pending",
-        speaker: "@MaduraiVoice_247",
-        subject: "elections",
-      },
-      {
-        rank: 3,
-        claim_id: "CLM-5017",
-        score: 68.7,
-        statement: "False agricultural loan waiver broadcast spreading rapidly across rural farming communities.",
-        district: "Coimbatore",
-        regional_source: "Public X / Twitter Feed",
-        language: "Tamil",
-        nlp_confidence: 88.0,
-        estimated_reach: 220000,
-        reach_velocity: "+18K/hr",
-        risk_tier: "Medium Risk (50-80)",
-        priority_score: 1.41,
-        action_tier: "Review",
-        action_reason: "Ranked #3 by reach x risk formula. Outranks low-reach high-confidence claims.",
-        status: "Pending",
-        speaker: "coimbatore-voice",
-        subject: "economy",
-      }
-    ]
+    escalated_count: escalatedCount || 2,
+    reviewed_count: reviewedCount,
+    pending_count: Math.max(0, cap - reviewedCount),
+    items: filtered,
   };
 }
 
 function getFallbackClaimDetail(claimId) {
+  const match = FALLBACK_CLAIMS_DATABASE.find(
+    (c) => c.claim_id === claimId || c.claim_id.replace(/^#/, '') === String(claimId).replace(/^#/, '')
+  ) || FALLBACK_CLAIMS_DATABASE[0];
+
   return {
-    claim_id: claimId || "CLM-8841",
-    case_id: "#TN-2023-8841",
-    threat_level: "High-Risk Threat",
-    title: "Electoral rumor regarding biometric subsidy verification in rural Madurai",
-    statement: "URGENT: Govt officials in Madurai are locking ration shops and demanding mandatory biometric re-verification linked directly to voter ID cards. If you don't scan by tomorrow evening, your monthly grain subsidy will be permanently cancelled! Forwarded as received.",
-    speaker: "MaduraiVoice_247",
-    author_handle: "@MaduraiVoice_247",
-    district: "Madurai South Constituency",
-    posted_time: "42 mins ago via Mobile Client",
-    calibrated_risk: 0.942,
-    score: 94.2,
-    nlp_confidence: 94.2,
-    estimated_reach: 180000,
-    reach_velocity: "+24K/hr",
-    priority_score: 1.84,
-    action_tier: "Escalate",
-    action_reason: "High calibrated risk and viral spread trigger mandatory containment review.",
-    sentiment_label: "Highly Hostile",
-    sentiment_score: -0.84,
-    sentiment_desc: "Polarity score -0.84 with strong negative valence targeting state machinery.",
-    emotional_triggers: [
-      { name: "Panic", score: 0.91 },
-      { name: "Urgency", score: 0.88 },
-      { name: "Injustice", score: 0.76 }
-    ],
-    context_distortion_label: "Synthetic Urgency",
-    context_distortion_desc: "Routine software upgrade misattributed to electoral disenfranchisement.",
-    frame_comparison: {
-      manipulated_label: "Manipulated Frame (Timestamp 0:14)",
-      manipulated_badge: "Deepfake/Edited Audio Match",
-      original_label: "Original Archive Footage (2021)",
-      original_badge: "Source Matched (99.8%)",
-      manipulated_img: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=600&q=80",
-      original_img: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80",
-    },
-    shap_drivers: [
-      { feature: "Linguistic Sensationalism", value: 0.85, attribution: "+0.28" },
-      { feature: "Source Falsehood History", value: 0.82, attribution: "+0.22" },
-      { feature: "Semantic Contradiction", value: 0.94, attribution: "+0.31" }
-    ],
-    shap_groups: {
-      source: 0.35,
-      linguistic: 0.28,
-      text: 0.15,
-      consistency: 0.31,
-    },
-    retrieved_evidence: [
-      {
-        reference_id: "EVD-TN-884",
-        authority: "Directorate of Information & Public Relations (DIPR Tamil Nadu)",
-        snippet: "Official statement: All ration shops in Madurai operate on routine schedules. No biometric re-verification or voter ID linkage is required for monthly civil supplies distribution.",
-        cosine_similarity: 0.884,
-        nli_label: "CONTRADICTION",
-        nli_contradiction_score: 0.941,
-      }
-    ],
-    plain_english_rationale: "94% likely misleading. Primary drivers include direct contradiction with official Tamil Nadu Civil Supplies department circulars and high sensational urgency cues.",
+    ...match,
+    case_id: match.claim_id,
+    threat_level: match.score >= 80 ? 'High-Risk Threat' : (match.score >= 50 ? 'Elevated Concern' : 'Monitored Signal'),
+    title: match.statement.slice(0, 80) + '...',
+    posted_meta: `Posted ${match.posted_time} • ${match.district} District`,
+    confidence_label: `${match.score}% Misleading Risk`,
   };
 }
 
