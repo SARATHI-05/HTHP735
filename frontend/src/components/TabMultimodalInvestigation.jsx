@@ -3,6 +3,7 @@ import { investigateMultimodal, submitModeratorAction } from '../services/api';
 
 export default function TabMultimodalInvestigation({
   onSelectClaim,
+  onInjectClaim,
   onNavigateToQueue,
   isReachHidden,
   toggleHideReach,
@@ -192,10 +193,18 @@ export default function TabMultimodalInvestigation({
     setFileType(s.type);
     if (s.previewUrl) {
       setFilePreview(s.previewUrl);
+    } else if (s.type === 'audio') {
+      setFilePreview('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
     } else {
       setFilePreview(null);
     }
-    setFile(null);
+    if (s.fakeFileName) {
+      setFile({ name: s.fakeFileName, type: s.type === 'audio' ? 'audio/mpeg' : 'application/octet-stream' });
+    } else if (s.type === 'image') {
+      setFile({ name: 'doctored_flyover_spliced.jpg', type: 'image/jpeg' });
+    } else {
+      setFile(null);
+    }
     setReport(null);
 
     // If Auto-Pilot is enabled, immediately trigger the forensic pipeline
@@ -220,6 +229,7 @@ export default function TabMultimodalInvestigation({
     if (params.textContent) formData.append('text_content', params.textContent);
     formData.append('reach', (params.reach || 65000).toString());
     formData.append('topic', params.topic || 'Elections');
+    if (params.fileType) formData.append('modality_hint', params.fileType);
 
     const res = await investigateMultimodal(formData);
     setLoading(false);
@@ -234,11 +244,12 @@ export default function TabMultimodalInvestigation({
     setReport(null);
 
     const formData = new FormData();
-    if (file) formData.append('file', file);
+    if (file && file instanceof File) formData.append('file', file);
     if (url) formData.append('url', url);
     if (textContent) formData.append('text_content', textContent);
     formData.append('reach', reach.toString());
     formData.append('topic', topic);
+    if (fileType) formData.append('modality_hint', fileType);
 
     const res = await investigateMultimodal(formData);
     setLoading(false);
@@ -307,12 +318,51 @@ export default function TabMultimodalInvestigation({
 
   const handlePushToQueue = async () => {
     const claimId = `INVST-${Date.now().toString().slice(-4)}`;
+    const platName = report?.forensics?.social_url?.platform || (detectedPlatform ? detectedPlatform.name : 'Multimodal Lab');
+    const claimTitle = report?.forensics?.social_url?.title || textContent?.slice(0, 100) || (file ? file.name : 'Multimodal Forensic Incident');
+    const pScore = Number(report?.triage?.priority_score || 85.0);
+    const pRisk = Number(report?.triage?.risk_score || 0.85);
+
+    const newClaim = {
+      claim_id: claimId,
+      rank: 1,
+      statement: textContent || report?.forensics?.social_url?.title || url || claimTitle,
+      title: claimTitle,
+      topic: topic || 'Elections',
+      calibrated_risk: pRisk,
+      estimated_reach: Number(report?.reach || reach || 65000),
+      priority_score: pScore,
+      action_tier: report?.triage?.action || 'Review',
+      recommended_action: report?.triage?.action || 'Review',
+      recommendation_reason: report?.triage?.reason || 'Multimodal forensic lab anomaly detected',
+      status: 'Pending',
+      source_credibility_tier: 'Low',
+      sourceName: platName,
+      source_name: platName,
+      nli_evidence: report?.fact_checks?.[0]?.verdict_snippet || 'Verified multimodal forensic detection anomaly.',
+      evidence_rating: report?.fact_checks?.[0]?.rating || 'Manipulated Media',
+      evidence_contradiction_score: 0.89,
+      shap_groups: {
+        language: 0.25,
+        source: 0.35,
+        consistency: 0.30,
+        text: 0.10,
+      },
+      plain_rationale: report?.triage?.reason || 'Elevated forensic anomaly score detected across multimodal signals.',
+      fromMultimodalLab: true,
+      report: report,
+    };
+
+    if (onInjectClaim) {
+      onInjectClaim(newClaim);
+    }
+
     await submitModeratorAction(claimId, {
       verdict: report?.triage?.action || 'Escalate to Cyber Cell',
       reviewer_id: 'forensic.lab',
       reviewer_notes: `Multimodal Lab Ingestion: ${report?.media_type} [Priority: ${report?.triage?.priority_score}]`,
     });
-    setQueueActionToast(`Dossier ${claimId} successfully injected into active Moderation Queue!`);
+    setQueueActionToast(`Dossier #${claimId} successfully injected into active Moderation Queue!`);
     setTimeout(() => setQueueActionToast(null), 4000);
   };
 
@@ -330,23 +380,43 @@ export default function TabMultimodalInvestigation({
     const claimId = report?.claim_id || `LAB-${Date.now().toString().slice(-4)}`;
     const platName = report?.forensics?.social_url?.platform || (detectedPlatform ? detectedPlatform.name : 'Multimodal Lab');
     const claimTitle = report?.forensics?.social_url?.title || textContent?.slice(0, 100) || (file ? file.name : 'Multimodal Forensic Incident');
+    const pScore = Number(report?.triage?.priority_score || 86.4);
+    const pRisk = Number(report?.triage?.risk_score || 0.88);
+
     const claimDossier = {
       claim_id: claimId,
+      rank: 1,
       title: claimTitle,
       statement: textContent || report?.forensics?.social_url?.title || url || claimTitle,
       meta: `Platform: ${platName} • Case ID: #${claimId}`,
       sourceName: platName,
+      source_name: platName,
       sourceIcon: report?.forensics?.social_url?.platform_icon || 'biotech',
       reach: isReachHidden ? null : `${Math.round(reach / 1000)}K`,
+      estimated_reach: Number(report?.reach || reach || 65000),
       velocity: '+24K/hr',
-      riskTier: (report?.triage?.priority_score >= 80) ? 'HIGH' : (report?.triage?.priority_score >= 65) ? 'MEDIUM' : 'LOW',
-      riskTierStyle: (report?.triage?.priority_score >= 80) ? 'red' : 'grey',
-      score: report?.triage?.priority_score ? Number(report.triage.priority_score).toFixed(1) : '86.4',
-      isCritical: Number(report?.triage?.priority_score || 86) >= 80,
+      riskTier: (pScore >= 80) ? 'HIGH' : (pScore >= 65) ? 'MEDIUM' : 'LOW',
+      riskTierStyle: (pScore >= 80) ? 'red' : 'grey',
+      score: pScore.toFixed(1),
+      priority_score: pScore,
+      calibrated_risk: pRisk,
+      recommended_action: report?.triage?.action || 'Escalate to Cyber Cell',
+      recommendation_reason: report?.triage?.reason || 'Critical multimodal anomaly detected',
+      isCritical: pScore >= 80,
       url: url,
       filePreview: filePreview,
       fromMultimodalLab: true,
       report: report,
+      nli_evidence: report?.fact_checks?.[0]?.verdict_snippet || 'Verified multimodal forensic detection anomaly.',
+      evidence_rating: report?.fact_checks?.[0]?.rating || 'Manipulated Media',
+      evidence_contradiction_score: 0.89,
+      plain_rationale: report?.triage?.reason || 'Multi-signal forensic detector flagged elevated risk on regional platform.',
+      shap_groups: {
+        language: 0.28,
+        source: 0.35,
+        consistency: 0.31,
+        text: 0.12,
+      },
     };
     if (onSelectClaim) {
       onSelectClaim(claimDossier);

@@ -93,15 +93,21 @@ export default function QueueDetailPanel({
             <span className="font-mono text-xs text-slate-500 font-semibold">
               {selectedClaim.claim_id}
             </span>
+            {selectedClaim.fromMultimodalLab && (
+              <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold border border-purple-200 text-[11px] flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">biotech</span>
+                Multimodal Lab Dossier
+              </span>
+            )}
             <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium capitalize text-[11px]">
-              {selectedClaim.subject || 'general'}
+              {selectedClaim.subject || selectedClaim.topic || 'general'}
             </span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
             <span className="material-symbols-outlined text-[13px] text-slate-400">location_on</span>
             <span>{selectedClaim.district || 'Tamil Nadu'} District</span>
             <span>•</span>
-            <span className="truncate max-w-[180px]">{selectedClaim.speaker || 'Regional Broadcast'}</span>
+            <span className="truncate max-w-[180px]">{selectedClaim.speaker || selectedClaim.sourceName || selectedClaim.source_name || 'Regional Broadcast'}</span>
           </div>
         </div>
 
@@ -124,6 +130,11 @@ export default function QueueDetailPanel({
         <blockquote className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-900 text-xs font-medium leading-relaxed italic border-l-4 border-l-slate-900">
           "{selectedClaim.statement}"
         </blockquote>
+        {selectedClaim.filePreview && (
+          <div className="mt-2 rounded-lg overflow-hidden border border-slate-200 bg-black flex items-center justify-center max-h-36">
+            <img src={selectedClaim.filePreview} alt="Forensic media" className="object-contain max-h-36 w-full" />
+          </div>
+        )}
       </div>
 
       {/* Risk Gauge & "Why It's Ranked #N" Line */}

@@ -7,6 +7,7 @@ export default function QueueSplitView({
   queueData,
   capacity = 20,
   day = 30,
+  customClaim,
   selectedClaimId,
   onSelectClaim,
   onActionComplete,
@@ -19,9 +20,9 @@ export default function QueueSplitView({
 
   const items = queueData?.items || [];
   const selectedClaim =
-    items.find((it) => it.claim_id === selectedClaimId) ||
-    items[0] ||
-    null;
+    (customClaim && customClaim.claim_id === selectedClaimId)
+      ? customClaim
+      : (items.find((it) => it.claim_id === selectedClaimId) || items[0] || null);
 
   const handleRowClick = (claimId) => {
     onSelectClaim(claimId);

@@ -77,6 +77,22 @@ export default function App() {
     }
   };
 
+  const handleInjectClaim = (newClaim) => {
+    if (!newClaim) return;
+    setQueueData((prev) => {
+      if (!prev) return prev;
+      const exists = prev.items?.some((it) => it.claim_id === newClaim.claim_id);
+      if (exists) return prev;
+      return {
+        ...prev,
+        items: [newClaim, ...(prev.items || [])],
+        pending_count: (prev.pending_count || 0) + 1,
+      };
+    });
+    setSelectedClaimId(newClaim.claim_id);
+    setCustomClaim(newClaim);
+  };
+
   const handleActionComplete = (claimId, verdict) => {
     if (queueData?.items) {
       const updated = queueData.items.map((it) =>
@@ -129,6 +145,7 @@ export default function App() {
             queueData={queueData}
             capacity={capacity}
             day={day}
+            customClaim={customClaim}
             selectedClaimId={selectedClaimId}
             onSelectClaim={handleSelectClaim}
             onActionComplete={handleActionComplete}
@@ -156,6 +173,7 @@ export default function App() {
                 handleSelectClaim(claim);
                 setActiveTab('queue');
               }}
+              onInjectClaim={handleInjectClaim}
               onNavigateToQueue={() => setActiveTab('queue')}
               isReachHidden={isReachHidden}
               toggleHideReach={toggleHideReach}
