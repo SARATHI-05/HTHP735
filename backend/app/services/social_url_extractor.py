@@ -16,7 +16,11 @@ import re
 import urllib.parse
 from typing import Any, Dict, Optional
 import requests
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 
 class SocialUrlExtractor:
@@ -222,33 +226,49 @@ class SocialUrlExtractor:
         try:
             resp = requests.get(url, headers=self.headers, timeout=self.timeout, allow_redirects=True)
             if resp.status_code == 200 and resp.text:
-                soup = BeautifulSoup(resp.text, "html.parser")
-
-                # Extract Title
                 title = ""
-                og_title = soup.find("meta", property="og:title") or soup.find("meta", attrs={"name": "twitter:title"})
-                if og_title and og_title.get("content"):
-                    title = og_title["content"].strip()
-                elif soup.title and soup.title.string:
-                    title = soup.title.string.strip()
-
-                # Extract Description
                 description = ""
-                og_desc = soup.find("meta", property="og:description") or soup.find("meta", attrs={"name": "twitter:description"}) or soup.find("meta", attrs={"name": "description"})
-                if og_desc and og_desc.get("content"):
-                    description = og_desc["content"].strip()
-
-                # Extract Preview Image
                 image_url = ""
-                og_img = soup.find("meta", property="og:image") or soup.find("meta", attrs={"name": "twitter:image"})
-                if og_img and og_img.get("content"):
-                    image_url = og_img["content"].strip()
-
-                # Extract Author / Handle
                 author = ""
-                og_author = soup.find("meta", property="og:article:author") or soup.find("meta", attrs={"name": "twitter:creator"}) or soup.find("meta", attrs={"name": "author"})
-                if og_author and og_author.get("content"):
-                    author = og_author["content"].strip()
+
+                if BeautifulSoup is not None:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+
+                    # Extract Title
+                    og_title = soup.find("meta", property="og:title") or soup.find("meta", attrs={"name": "twitter:title"})
+                    if og_title and og_title.get("content"):
+                        title = og_title["content"].strip()
+                    elif soup.title and soup.title.string:
+                        title = soup.title.string.strip()
+
+                    # Extract Description
+                    og_desc = soup.find("meta", property="og:description") or soup.find("meta", attrs={"name": "twitter:description"}) or soup.find("meta", attrs={"name": "description"})
+                    if og_desc and og_desc.get("content"):
+                        description = og_desc["content"].strip()
+
+                    # Extract Preview Image
+                    og_img = soup.find("meta", property="og:image") or soup.find("meta", attrs={"name": "twitter:image"})
+                    if og_img and og_img.get("content"):
+                        image_url = og_img["content"].strip()
+
+                    # Extract Author / Handle
+                    og_author = soup.find("meta", property="og:article:author") or soup.find("meta", attrs={"name": "twitter:creator"}) or soup.find("meta", attrs={"name": "author"})
+                    if og_author and og_author.get("content"):
+                        author = og_author["content"].strip()
+                else:
+                    m_title = re.search(r'<meta\s+[^>]*property=["\'](?:og:title|twitter:title)["\'][^>]*content=["\']([^"\']*)["\']', resp.text, re.IGNORECASE)
+                    if not m_title:
+                        m_title = re.search(r'<title[^>]*>([^<]*)</title>', resp.text, re.IGNORECASE)
+                    if m_title:
+                        title = m_title.group(1).strip()
+
+                    m_desc = re.search(r'<meta\s+[^>]*property=["\'](?:og:description|twitter:description)["\'][^>]*content=["\']([^"\']*)["\']', resp.text, re.IGNORECASE)
+                    if m_desc:
+                        description = m_desc.group(1).strip()
+
+                    m_img = re.search(r'<meta\s+[^>]*property=["\'](?:og:image|twitter:image)["\'][^>]*content=["\']([^"\']*)["\']', resp.text, re.IGNORECASE)
+                    if m_img:
+                        image_url = m_img.group(1).strip()
 
                 metadata["title"] = title
                 metadata["description"] = description
