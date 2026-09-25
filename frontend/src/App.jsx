@@ -187,7 +187,16 @@ export default function App() {
               handleSelectClaim(claimId);
               setActiveTab('queue');
             }}
-            onNavigateToQueue={() => setActiveTab('queue')}
+            onNavigateToQueue={(district) => {
+              if (district && typeof district === 'string') {
+                setSearchQuery(district);
+              }
+              setActiveTab('queue');
+            }}
+            onNavigateToLab={(claimId) => {
+              if (claimId) handleSelectClaim(claimId);
+              setActiveTab('multimodal');
+            }}
             isReachHidden={isReachHidden}
           />
         )}

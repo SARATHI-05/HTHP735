@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import QueueTable from './QueueTable';
 import QueueDetailPanel from './QueueDetailPanel';
 import WhyThisOrderCard from './WhyThisOrderCard';
+import DistrictMisinfoMap from './DistrictMisinfoMap';
 
 export default function QueueSplitView({
   queueData,
@@ -17,6 +18,7 @@ export default function QueueSplitView({
   onOpenWalkthrough,
 }) {
   const [mobileTab, setMobileTab] = useState('table'); // 'table' or 'detail'
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'map'
 
   const items = queueData?.items || [];
   const selectedClaim =
@@ -70,23 +72,70 @@ export default function QueueSplitView({
 
       {/* 3. 60 / 40 Main Split View Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column (about 60% -> 7 of 12 cols on desktop): Ranked Moderation Queue Table */}
+        {/* Left Column (about 60% -> 7 of 12 cols on desktop): Ranked Moderation Queue Table or District Map */}
         <section
           className={`lg:col-span-7 xl:col-span-7 w-full flex flex-col gap-3 min-w-0 ${
             mobileTab === 'table' ? 'block' : 'hidden lg:block'
           }`}
-          aria-label="Ranked Moderation Queue Table"
+          aria-label="Ranked Moderation Queue Table or District Map"
         >
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-            <QueueTable
-              items={items}
-              capacity={capacity}
-              day={day}
-              selectedClaimId={selectedClaim?.claim_id || selectedClaimId}
-              onSelectClaim={handleRowClick}
-              isReachHidden={isReachHidden}
-            />
+          {/* View Mode Switcher Header */}
+          <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-2 px-3 shadow-xs">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">table_rows</span>
+                <span>Queue Table ({items.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('map')}
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === 'map'
+                    ? 'bg-slate-900 text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">map</span>
+                <span>🗺️ District Map View</span>
+              </button>
+            </div>
+            <span className="text-[11px] text-slate-500 hidden sm:inline">
+              {viewMode === 'table' ? 'Prioritized by Harm-Weighted GBDT' : '38 Districts Geospatial Surveillance'}
+            </span>
           </div>
+
+          {/* Conditional View: QueueTable OR DistrictMisinfoMap */}
+          {viewMode === 'table' ? (
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+              <QueueTable
+                items={items}
+                capacity={capacity}
+                day={day}
+                selectedClaimId={selectedClaim?.claim_id || selectedClaimId}
+                onSelectClaim={handleRowClick}
+                isReachHidden={isReachHidden}
+              />
+            </div>
+          ) : (
+            <div className="w-full">
+              <DistrictMisinfoMap
+                onSelectClaim={(claimId) => {
+                  handleRowClick(claimId);
+                }}
+                onNavigateToLab={onNavigateToLab}
+                isReachHidden={isReachHidden}
+                highlightedDistrictId={(selectedClaim?.district || 'Chennai').toLowerCase()}
+              />
+            </div>
+          )}
         </section>
 
         {/* Right Column (about 40% -> 5 of 12 cols on desktop): Sticky Detail Panel */}
@@ -114,7 +163,7 @@ export default function QueueSplitView({
           <div className="bg-white border border-slate-200 rounded-xl p-4 lg:p-5 shadow-xs">
             <QueueDetailPanel
               selectedClaim={selectedClaim}
-              activeUser="elena.rostova"
+              activeUser="moderator"
               onActionComplete={onActionComplete}
               onNavigateToLab={onNavigateToLab}
             />

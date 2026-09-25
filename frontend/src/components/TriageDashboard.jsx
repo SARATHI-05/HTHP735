@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { fetchOverview } from '../services/api';
+import DistrictMisinfoMap from './DistrictMisinfoMap';
+import DistrictMiniLocator from './DistrictMiniLocator';
 
-export default function TriageDashboard({ onSelectClaim, onNavigateToQueue }) {
+export default function TriageDashboard({ onSelectClaim, onNavigateToQueue, onNavigateToLab, isReachHidden = false }) {
   const [data, setData] = useState(null);
   const [timeRange, setTimeRange] = useState('24H');
+  const [highlightedDistrictId, setHighlightedDistrictId] = useState('chennai');
 
   useEffect(() => {
     async function load() {
@@ -16,42 +19,54 @@ export default function TriageDashboard({ onSelectClaim, onNavigateToQueue }) {
   const tickerText = data?.ticker?.[0]?.text || "Fake voice note circulating regarding water reservoir contamination. / குடிநீர் தேக்கம் குறித்த போலி ஆடியோ செய்தி.";
   const tickerDistrict = data?.ticker?.[0]?.district || "CHENNAI";
 
-  const districts = [
+  const keySurveillanceDistricts = [
     {
+      id: "chennai",
       name: "Chennai",
-      status: "Critical",
-      badgeClass: "bg-red-50 text-error",
+      status: "Critical Alert",
+      badgeClass: "bg-red-50 text-error border-error/20",
       volume: "22 signals",
-      risk: "94%",
+      riskScore: 94.2,
+      risk: "94.2%",
       isRed: true,
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDiT9StcZmrUJEi2T2CcgEPHFxAuis9RiwbDfJ4m2zC2nQYb0S9OcFbBRbRffz8qPCN2AtjRoTmCj-RUg1xVN7ebjNwEuVc5OGZ53dEhfJDfQH_Pbly47Y9lB5ZJ1n5xR-atS6Mq_DmQNUeymqS2QC4dYy_U9k7J4itT7e6INm-xaqdaCRwjxYfGnu-9I5w4XtiybbUATI6VaJQsYGBvaWAp6yBr0ctmdNcKm-zJFrUBkJZKU3j_o7GuQ",
+      claimId: "#TN-8821",
+      vector: "WhatsApp Audio",
     },
     {
+      id: "madurai",
       name: "Madurai",
-      status: "Moderate",
-      badgeClass: "bg-red-50 text-error",
-      volume: "11 signals",
-      risk: "72%",
-      isRed: false,
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCHZ4D5aMvVq6w-r85k_X5Jp2q2e1Y_nZ_Jk1c5_Y9V3c2f1j9K_L8m_Q_P6a4e2g9_k7m_o5p3r1t9v_x2z4B6D8F0H2J4L6N8P0R2T4V6X8Z0b2d4f6h8j0l2n4p6r8t0v2x4z6",
-    },
-    {
-      name: "Coimbatore",
-      status: "High",
-      badgeClass: "bg-red-50 text-error",
-      volume: "9 signals",
-      risk: "85%",
+      status: "Critical Alert",
+      badgeClass: "bg-red-50 text-error border-error/20",
+      volume: "14 signals",
+      riskScore: 88.5,
+      risk: "88.5%",
       isRed: true,
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuC1_Y2_Z3_a4_b5_c6_d7_e8_f9_g0_h1_i2_j3_k4_l5_m6_n7_o8_p9_q0_r1_s2_t3_u4_v5_w6_x7_y8_z9_A0_B1_C2_D3_E4_F5_G6_H7_I8_J9_K0_L1_M2_N3_O4_P5_Q6",
+      claimId: "#TN-7734",
+      vector: "Manipulated Video",
     },
     {
+      id: "coimbatore",
+      name: "Coimbatore",
+      status: "High Alert",
+      badgeClass: "bg-red-50 text-error border-error/20",
+      volume: "12 signals",
+      riskScore: 85.0,
+      risk: "85.0%",
+      isRed: true,
+      claimId: "CLM-5017",
+      vector: "Agri Loan Waiver",
+    },
+    {
+      id: "salem",
       name: "Salem",
-      status: "Stable",
-      badgeClass: "bg-blue-50 text-secondary",
-      volume: "6 signals",
-      risk: "48%",
+      status: "Elevated Risk",
+      badgeClass: "bg-amber-50 text-amber-800 border-amber-200",
+      volume: "8 signals",
+      riskScore: 68.4,
+      risk: "68.4%",
       isRed: false,
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD0_E1_F2_G3_H4_I5_J6_K7_L8_M9_N0_O1_P2_Q3_R4_S5_T6_U7_V8_W9_X0_Y1_Z2_a3_b4_c5_d6_e7_f8_g9_h0_i1_j2_k3_l4_m5_n6_o7_p8_q9_r0_s1_t2_u3_v4",
+      claimId: "#TN-5421",
+      vector: "Ration Shop Rumors",
     },
   ];
 
@@ -164,14 +179,32 @@ export default function TriageDashboard({ onSelectClaim, onNavigateToQueue }) {
         </div>
       </div>
 
-      {/* Regional Spread & Threat Vector Breakdown Section */}
+      {/* Interactive Tamil Nadu District Misinformation Surveillance Map */}
+      <div id="district-surveillance-map" className="w-full">
+        <DistrictMisinfoMap
+          onSelectClaim={onSelectClaim}
+          onNavigateToQueue={onNavigateToQueue}
+          onNavigateToLab={onNavigateToLab}
+          isReachHidden={isReachHidden}
+          highlightedDistrictId={highlightedDistrictId}
+        />
+      </div>
+
+      {/* Key Hotspot District Radar Cards & Threat Vector Breakdown Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-space-md">
-        {/* Regional Misinformation Distribution (2 cols) */}
+        {/* Key Hotspot District Radar Cards (2 cols) */}
         <div className="lg:col-span-2 bg-surface-container-lowest border border-outline-variant/30 p-space-lg rounded-xl flex flex-col justify-between shadow-xs">
           <div className="flex justify-between items-center mb-space-md">
             <div>
-              <h2 className="text-headline-md text-on-surface font-bold text-lg">Regional Misinformation Distribution</h2>
-              <p className="text-body-sm text-outline text-xs">Active cluster surveillance across key Tamil Nadu districts</p>
+              <h2 className="text-headline-md text-on-surface font-bold text-lg flex items-center gap-2">
+                <span>Key Surveillance Hotspots</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-bold border border-red-200">
+                  TOP 4 CLUSTERS
+                </span>
+              </h2>
+              <p className="text-body-sm text-outline text-xs">
+                Select any district radar card to focus the live state map & view active incident dossiers
+              </p>
             </div>
             <div className="flex gap-space-xs bg-surface-container-low p-1 rounded-lg border border-outline-variant/20">
               <button
@@ -189,30 +222,58 @@ export default function TriageDashboard({ onSelectClaim, onNavigateToQueue }) {
             </div>
           </div>
 
-          {/* 4 District Cards */}
+          {/* 4 Interactive District Radar Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-space-md my-space-sm">
-            {districts.map((dist) => (
-              <div
-                key={dist.name}
-                onClick={onNavigateToQueue}
-                className="bg-surface-container-low border border-outline-variant/30 p-space-md rounded-xl flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container-high transition-all cursor-pointer shadow-xs"
-              >
-                <div className="flex justify-between items-center mb-space-sm">
-                  <span className="font-headline-sm text-on-surface font-semibold text-sm">{dist.name}</span>
-                  <span className={`font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold ${dist.badgeClass}`}>
-                    {dist.status}
-                  </span>
-                </div>
+            {keySurveillanceDistricts.map((dist) => {
+              const isSelected = highlightedDistrictId === dist.id;
+              return (
                 <div
-                  className="w-full h-24 rounded-lg bg-cover bg-center mb-space-sm border border-outline-variant/20 bg-slate-100"
-                  style={{ backgroundImage: `url('${dist.img}')` }}
-                />
-                <div className="flex justify-between text-body-sm text-xs pt-1">
-                  <span className="text-outline">Volume: <strong className="text-on-surface">{dist.volume}</strong></span>
-                  <span className={`font-semibold ${dist.isRed ? 'text-error' : 'text-secondary'}`}>Risk: {dist.risk}</span>
+                  key={dist.id}
+                  onClick={() => {
+                    setHighlightedDistrictId(dist.id);
+                    const el = document.getElementById('district-surveillance-map');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className={`bg-surface-container-low border p-space-md rounded-xl flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container-high transition-all cursor-pointer shadow-xs ${
+                    isSelected
+                      ? 'border-sky-500 ring-2 ring-sky-500/20 shadow-md'
+                      : 'border-outline-variant/30'
+                  }`}
+                >
+                  <div className="flex justify-between items-center mb-space-xs">
+                    <span className="font-headline-sm text-on-surface font-semibold text-sm">
+                      {dist.name}
+                    </span>
+                    <span className={`font-label-sm px-2 py-0.5 rounded-full text-[10px] font-bold border ${dist.badgeClass}`}>
+                      {dist.status}
+                    </span>
+                  </div>
+
+                  {/* Real District Radar Mini-Map */}
+                  <div className="my-1">
+                    <DistrictMiniLocator
+                      districtName={dist.name}
+                      riskScore={dist.riskScore}
+                      height={90}
+                      showLabel={false}
+                    />
+                  </div>
+
+                  <div className="text-[11px] text-slate-500 truncate mb-1">
+                    ⚡ {dist.vector}
+                  </div>
+
+                  <div className="flex justify-between text-body-sm text-xs pt-1 border-t border-slate-100">
+                    <span className="text-outline">
+                      Signals: <strong className="text-on-surface">{dist.volume}</strong>
+                    </span>
+                    <span className={`font-bold ${dist.isRed ? 'text-error' : 'text-secondary'}`}>
+                      {dist.risk}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

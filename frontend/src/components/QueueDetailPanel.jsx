@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { submitModeratorAction } from '../services/api';
+import DistrictMiniLocator from './DistrictMiniLocator';
 
 export default function QueueDetailPanel({
   selectedClaim,
-  activeUser = 'elena.rostova',
+  activeUser = 'moderator',
   onActionComplete,
   onNavigateToLab,
 }) {
   const [reviewerNotes, setReviewerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
+  const [showDistrictMap, setShowDistrictMap] = useState(false);
 
   if (!selectedClaim) {
     return (
@@ -103,12 +105,43 @@ export default function QueueDetailPanel({
               {selectedClaim.subject || selectedClaim.topic || 'general'}
             </span>
           </div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-            <span className="material-symbols-outlined text-[13px] text-slate-400">location_on</span>
-            <span>{selectedClaim.district || 'Tamil Nadu'} District</span>
-            <span>•</span>
-            <span className="truncate max-w-[180px]">{selectedClaim.speaker || selectedClaim.sourceName || selectedClaim.source_name || 'Regional Broadcast'}</span>
+          <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center justify-between gap-1">
+            <div className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px] text-slate-400">location_on</span>
+              <span className="font-semibold text-slate-700">{selectedClaim.district || 'Tamil Nadu'} District</span>
+              <span>•</span>
+              <span className="truncate max-w-[140px]">{selectedClaim.speaker || selectedClaim.sourceName || selectedClaim.source_name || 'Regional Broadcast'}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDistrictMap(!showDistrictMap)}
+              className="text-[10px] font-bold text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[12px]">map</span>
+              <span>{showDistrictMap ? 'Hide Map' : '🗺️ District Map'}</span>
+            </button>
           </div>
+
+          {/* Collapsible Mini District Radar Map */}
+          {showDistrictMap && (
+            <div className="mt-2 p-2 bg-slate-950 rounded-xl border border-slate-800 text-white flex flex-col gap-1.5 animate-fadeIn">
+              <div className="flex items-center justify-between text-[11px] border-b border-slate-800 pb-1">
+                <span className="font-mono text-sky-400 font-bold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[13px]">radar</span>
+                  {selectedClaim.district || 'Tamil Nadu'} Surveillance Radar
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Tamil Nadu Geo-Zone
+                </span>
+              </div>
+              <DistrictMiniLocator
+                districtName={selectedClaim.district || 'Chennai'}
+                riskScore={selectedClaim.calibrated_risk ? Math.round(selectedClaim.calibrated_risk * 100) : selectedClaim.score}
+                height={85}
+                showLabel={true}
+              />
+            </div>
+          )}
         </div>
 
         {selectedClaim.status === 'Resolved' ? (

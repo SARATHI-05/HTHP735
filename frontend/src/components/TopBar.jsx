@@ -197,17 +197,6 @@ export default function TopBar({
           <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
           Tamil Nadu
         </span>
-
-        {/* Moderator Profile Avatar */}
-        <div className="flex items-center gap-2 pl-1 border-l border-slate-200">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs ring-2 ring-slate-100 shadow-xs" title="Elena Rostova (Lead Trust & Safety Moderator)">
-            ER
-          </div>
-          <div className="hidden lg:block text-left leading-none">
-            <span className="text-xs font-bold text-slate-800 block">Elena Rostova</span>
-            <span className="text-[10px] text-slate-500 font-medium">T&amp;S Supervisor</span>
-          </div>
-        </div>
       </div>
     </header>
   );

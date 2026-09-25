@@ -3,7 +3,7 @@ import { submitModeratorAction, autoAnalyzeInvestigation } from '../services/api
 
 export default function ItemInvestigation({
   selectedClaim,
-  activeUser = 'elena.rostova',
+  activeUser = 'moderator',
   onActionComplete,
   onBackToQueue,
   onNavigateToLab,
@@ -25,7 +25,7 @@ export default function ItemInvestigation({
     try {
       const res = await submitModeratorAction(claimId, {
         action: actionLabel,
-        reviewer_id: activeUser || 'elena.rostova',
+        reviewer_id: activeUser || 'moderator',
       });
       setLastAction({
         label: actionLabel,

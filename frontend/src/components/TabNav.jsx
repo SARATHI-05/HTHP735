@@ -37,8 +37,10 @@ export default function TabNav({
     },
     {
       id: 'overview',
-      label: 'Regional Overview',
-      icon: 'dashboard',
+      label: 'District Maps & Overview',
+      icon: 'map',
+      badge: '38 Districts',
+      badgeColor: 'bg-red-100 text-red-800 border-red-200',
     },
   ];
 

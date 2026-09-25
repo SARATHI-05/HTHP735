@@ -244,7 +244,7 @@ export default function ModerationQueue({
   };
 
   const handleQuickAction = async (claimId, actionName) => {
-    await submitModeratorAction(claimId, { action: actionName, reviewer_id: 'elena.rostova' });
+    await submitModeratorAction(claimId, { action: actionName, reviewer_id: 'moderator' });
     setDispositionMap((prev) => ({
       ...prev,
       [claimId]: {
