@@ -358,7 +358,14 @@ export default function QueueTable({
 
                       {/* 6. Action Badge */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                        {renderActionBadge(item.action_tier)}
+                        {item.status === 'Resolved' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                            <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                            <span>{item.applied_verdict ? item.applied_verdict.replace(/_/g, ' ') : 'Resolved'}</span>
+                          </span>
+                        ) : (
+                          renderActionBadge(item.action_tier)
+                        )}
                       </td>
                     </tr>
 

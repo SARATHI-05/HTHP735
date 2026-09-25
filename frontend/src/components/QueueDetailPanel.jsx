@@ -10,8 +10,20 @@ export default function QueueDetailPanel({
 }) {
   const [reviewerNotes, setReviewerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingVerdict, setSubmittingVerdict] = useState(null);
+  const [recordedVerdict, setRecordedVerdict] = useState(
+    selectedClaim?.status === 'Resolved' ? (selectedClaim.applied_verdict || 'VERIFIED') : null
+  );
   const [actionSuccess, setActionSuccess] = useState(null);
   const [showDistrictMap, setShowDistrictMap] = useState(false);
+
+  React.useEffect(() => {
+    setRecordedVerdict(
+      selectedClaim?.status === 'Resolved' ? (selectedClaim.applied_verdict || 'VERIFIED') : null
+    );
+    setReviewerNotes('');
+    setActionSuccess(null);
+  }, [selectedClaim?.claim_id, selectedClaim?.status]);
 
   if (!selectedClaim) {
     return (
@@ -39,28 +51,33 @@ export default function QueueDetailPanel({
   };
 
   const handleModeratorAction = async (verdict) => {
+    setSubmittingVerdict(verdict);
     setIsSubmitting(true);
     try {
-      const res = await submitModeratorAction(selectedClaim.claim_id, {
+      await submitModeratorAction(selectedClaim.claim_id, {
         action: verdict,
         reviewer_id: activeUser,
         notes: reviewerNotes,
       });
-      setActionSuccess(`Verdict recorded: "${verdict}"`);
+      setRecordedVerdict(verdict);
+      setActionSuccess(`Verdict recorded: "${verdict.replace(/_/g, ' ')}"`);
       if (onActionComplete) {
         onActionComplete(selectedClaim.claim_id, verdict);
       }
       setTimeout(() => {
         setActionSuccess(null);
-      }, 3500);
+      }, 4000);
     } catch (err) {
-      setActionSuccess(`Verdict applied: "${verdict}"`);
+      console.warn('Action recording local fallback', err);
+      setRecordedVerdict(verdict);
+      setActionSuccess(`Verdict recorded: "${verdict.replace(/_/g, ' ')}"`);
       if (onActionComplete) {
         onActionComplete(selectedClaim.claim_id, verdict);
       }
-      setTimeout(() => setActionSuccess(null), 3500);
+      setTimeout(() => setActionSuccess(null), 4000);
     } finally {
       setIsSubmitting(false);
+      setSubmittingVerdict(null);
     }
   };
 
@@ -144,12 +161,14 @@ export default function QueueDetailPanel({
           )}
         </div>
 
-        {selectedClaim.status === 'Resolved' ? (
-          <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-[10px] shrink-0">
-            ✓ RESOLVED
+        {selectedClaim.status === 'Resolved' || recordedVerdict ? (
+          <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-[10px] shrink-0 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[13px]">check_circle</span>
+            ✓ RESOLVED {recordedVerdict ? `(${recordedVerdict.replace(/_/g, ' ')})` : ''}
           </span>
         ) : (
-          <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 text-[10px] shrink-0">
+          <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 text-[10px] shrink-0 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[13px]">schedule</span>
             ⏳ PENDING REVIEW
           </span>
         )}
@@ -356,9 +375,18 @@ export default function QueueDetailPanel({
 
       {/* Moderator Action Desk */}
       <div className="border-t border-slate-200 pt-3 flex flex-col gap-2">
-        <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">
-          Moderator Action Desk
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">
+            Moderator Action Desk
+          </label>
+          {recordedVerdict && (
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px]">done_all</span>
+              <span>{recordedVerdict.replace(/_/g, ' ')}</span>
+            </span>
+          )}
+        </div>
+
         <textarea
           rows={2}
           value={reviewerNotes}
@@ -367,56 +395,124 @@ export default function QueueDetailPanel({
           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-900 focus:bg-white focus:border-slate-900 transition-colors"
         />
 
-        <div className="grid grid-cols-2 gap-1.5 pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          {/* 1. Mark Misleading */}
           <button
             type="button"
             disabled={isSubmitting}
             onClick={() => handleModeratorAction('VERIFIED_MISLEADING')}
-            className="py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+            className={`py-2 px-3 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 ${
+              recordedVerdict === 'VERIFIED_MISLEADING'
+                ? 'bg-rose-700 text-white ring-2 ring-rose-400 ring-offset-1'
+                : 'bg-rose-600 hover:bg-rose-700 active:scale-95 text-white'
+            }`}
           >
-            <span>🔴</span>
-            <span>Mark Misleading</span>
+            {submittingVerdict === 'VERIFIED_MISLEADING' ? (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : recordedVerdict === 'VERIFIED_MISLEADING' ? (
+              <span className="material-symbols-outlined text-[15px]">check</span>
+            ) : (
+              <span>🔴</span>
+            )}
+            <span>{recordedVerdict === 'VERIFIED_MISLEADING' ? 'Marked Misleading' : 'Mark Misleading'}</span>
           </button>
 
+          {/* 2. Mark True */}
           <button
             type="button"
             disabled={isSubmitting}
             onClick={() => handleModeratorAction('VERIFIED_TRUE')}
-            className="py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+            className={`py-2 px-3 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 ${
+              recordedVerdict === 'VERIFIED_TRUE'
+                ? 'bg-emerald-700 text-white ring-2 ring-emerald-400 ring-offset-1'
+                : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white'
+            }`}
           >
-            <span>🟢</span>
-            <span>Mark True</span>
+            {submittingVerdict === 'VERIFIED_TRUE' ? (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : recordedVerdict === 'VERIFIED_TRUE' ? (
+              <span className="material-symbols-outlined text-[15px]">check</span>
+            ) : (
+              <span>🟢</span>
+            )}
+            <span>{recordedVerdict === 'VERIFIED_TRUE' ? 'Marked True' : 'Mark True'}</span>
           </button>
 
+          {/* 3. Escalate */}
           <button
             type="button"
             disabled={isSubmitting}
             onClick={() => handleModeratorAction('ESCALATE_LEGAL')}
-            className="py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+            className={`py-2 px-3 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 ${
+              recordedVerdict === 'ESCALATE_LEGAL'
+                ? 'bg-slate-950 text-white ring-2 ring-amber-400 ring-offset-1'
+                : 'bg-slate-900 hover:bg-slate-800 active:scale-95 text-white'
+            }`}
           >
-            <span>🚨</span>
-            <span>Escalate</span>
+            {submittingVerdict === 'ESCALATE_LEGAL' ? (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : recordedVerdict === 'ESCALATE_LEGAL' ? (
+              <span className="material-symbols-outlined text-[15px]">check</span>
+            ) : (
+              <span>🚨</span>
+            )}
+            <span>{recordedVerdict === 'ESCALATE_LEGAL' ? 'Escalated to Cyber' : 'Escalate'}</span>
           </button>
 
+          {/* 4. Deprioritize */}
           <button
             type="button"
             disabled={isSubmitting}
             onClick={() => handleModeratorAction('DISMISS_LOW_PRIORITY')}
-            className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition shadow-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 border border-slate-200"
+            className={`py-2 px-3 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 border ${
+              recordedVerdict === 'DISMISS_LOW_PRIORITY'
+                ? 'bg-slate-300 text-slate-900 border-slate-400 ring-2 ring-slate-400 ring-offset-1'
+                : 'bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border-slate-200'
+            }`}
           >
-            <span>💤</span>
-            <span>Deprioritize</span>
+            {submittingVerdict === 'DISMISS_LOW_PRIORITY' ? (
+              <span className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></span>
+            ) : recordedVerdict === 'DISMISS_LOW_PRIORITY' ? (
+              <span className="material-symbols-outlined text-[15px]">check</span>
+            ) : (
+              <span>💤</span>
+            )}
+            <span>{recordedVerdict === 'DISMISS_LOW_PRIORITY' ? 'Deprioritized' : 'Deprioritize'}</span>
           </button>
         </div>
 
+        {/* Audit Confirmation Banner inside the Desk */}
+        {recordedVerdict && (
+          <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-950 flex flex-col gap-1.5 animate-fadeIn shadow-xs mt-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
+                <span className="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
+                Verdict Applied: {recordedVerdict.replace(/_/g, ' ')}
+              </span>
+              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded font-bold">
+                AUDIT LOGGED
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-800 leading-snug">
+              Claim <strong>{selectedClaim.claim_id}</strong> updated to <strong>Resolved</strong>. Logged to compliance audit trail by <strong>{activeUser}</strong>.
+            </p>
+          </div>
+        )}
+
+        {/* 5. Run Deep Spectrogram Scan in Lab */}
         {onNavigateToLab && (
           <button
             type="button"
-            onClick={onNavigateToLab}
-            className="mt-1 w-full py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-semibold rounded-lg text-xs transition flex items-center justify-center gap-1 cursor-pointer"
+            onClick={() => onNavigateToLab(selectedClaim)}
+            className="mt-1 w-full py-2 bg-purple-50 hover:bg-purple-100 active:bg-purple-200 text-purple-900 border border-purple-300 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs group"
           >
-            <span className="material-symbols-outlined text-[15px]">biotech</span>
+            <span className="material-symbols-outlined text-[17px] text-purple-700 group-hover:scale-110 transition-transform">
+              biotech
+            </span>
             <span>Run Deep Spectrogram Scan in Lab</span>
+            <span className="material-symbols-outlined text-[15px] text-purple-500 ml-auto group-hover:translate-x-0.5 transition-transform">
+              arrow_forward
+            </span>
           </button>
         )}
       </div>

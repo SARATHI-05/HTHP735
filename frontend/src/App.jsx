@@ -93,10 +93,12 @@ export default function App() {
     setCustomClaim(newClaim);
   };
 
+  const [labInitialClaim, setLabInitialClaim] = useState(null);
+
   const handleActionComplete = (claimId, verdict) => {
     if (queueData?.items) {
       const updated = queueData.items.map((it) =>
-        it.claim_id === claimId ? { ...it, status: 'Resolved' } : it
+        it.claim_id === claimId ? { ...it, status: 'Resolved', applied_verdict: verdict } : it
       );
       setQueueData({
         ...queueData,
@@ -105,6 +107,23 @@ export default function App() {
         pending_count: Math.max(0, (queueData.pending_count || 6) - 1),
       });
     }
+    if (customClaim && customClaim.claim_id === claimId) {
+      setCustomClaim({
+        ...customClaim,
+        status: 'Resolved',
+        applied_verdict: verdict,
+      });
+    }
+  };
+
+  const handleNavigateToLab = (claim) => {
+    const target =
+      claim ||
+      customClaim ||
+      queueData?.items?.find((it) => it.claim_id === selectedClaimId) ||
+      null;
+    setLabInitialClaim(target);
+    setActiveTab('multimodal');
   };
 
   return (
@@ -151,7 +170,7 @@ export default function App() {
             onActionComplete={handleActionComplete}
             isReachHidden={isReachHidden}
             toggleHideReach={toggleHideReach}
-            onNavigateToLab={() => setActiveTab('multimodal')}
+            onNavigateToLab={handleNavigateToLab}
             onOpenWalkthrough={handleOpenWalkthrough}
           />
         )}
@@ -169,6 +188,7 @@ export default function App() {
         {activeTab === 'multimodal' && (
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
             <TabMultimodalInvestigation
+              initialClaim={labInitialClaim}
               onSelectClaim={(claim) => {
                 handleSelectClaim(claim);
                 setActiveTab('queue');
